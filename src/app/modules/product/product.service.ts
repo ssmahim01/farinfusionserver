@@ -9,51 +9,93 @@ import { ICategory } from '../category/category.interface';
 import { IProduct } from './product.interface';
 
 
+// const createProductService = async (payload: Partial<IProduct>) => {
+//   const isProductExist = await Product.findOne({ name: payload.title });
+//   if (isProductExist) {
+//     throw new AppError(httpStatus.CONFLICT, "Product with this title already exists");
+//   }
+
+//   const totalAddedStock = payload.totalAddedStock || 0;
+//   const totalSold = payload.totalSold || 0;
+
+//   payload.availableStock = totalAddedStock - totalSold;
+
+//   const product = await Product.create(payload);
+//   return product;
+// };
+
 const createProductService = async (payload: Partial<IProduct>) => {
-  const isProductExist = await Product.findOne({ name: payload.title });
+  const isProductExist = await Product.findOne({ title: payload.title });
   if (isProductExist) {
-    throw new AppError(httpStatus.CONFLICT, "Product with this title already exists");
+    throw new AppError(httpStatus.CONFLICT, "Product already exists");
   }
 
-  const totalAddedStock = payload.totalAddedStock || 0;
-  const totalSold = payload.totalSold || 0;
+  const availableStock = payload.availableStock ?? 0;
 
-  payload.availableStock = totalAddedStock - totalSold;
+  payload.availableStock = availableStock;
+  payload.totalAddedStock = availableStock;
+  payload.totalSold = 0;
 
   const product = await Product.create(payload);
   return product;
 };
 
+// const updateProduct = async (
+//   productId: string,
+//   payload: Partial<IProduct>
+// ) => {
+//   const existingProduct = await Product.findById(productId);
+
+//   if (!existingProduct) {
+//     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+//   }
+
+//     if (payload.totalAddedStock !== undefined || payload.totalSold !== undefined) {
+
+//     const product = await Product.findById(productId);
+
+//     const totalAddedStock = payload.totalAddedStock ?? product?.totalAddedStock ?? 0;
+//     const totalSold = payload.totalSold ?? product?.totalSold ?? 0;
+
+//     payload.availableStock = totalAddedStock - totalSold;
+//   }
+
+//   const updatedProduct = await Product.findByIdAndUpdate(
+//     productId,
+//     payload,
+//     { new: true, runValidators: true }
+//   );
+
+//   return updatedProduct;
+
+// };
 
 const updateProduct = async (
   productId: string,
   payload: Partial<IProduct>
 ) => {
-  const existingProduct = await Product.findById(productId);
-
-  if (!existingProduct) {
+  const product = await Product.findById(productId);
+  if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
   }
 
-    if (payload.totalAddedStock !== undefined || payload.totalSold !== undefined) {
-
-    const product = await Product.findById(productId);
-
-    const totalAddedStock = payload.totalAddedStock ?? product?.totalAddedStock ?? 0;
-    const totalSold = payload.totalSold ?? product?.totalSold ?? 0;
-
-    payload.availableStock = totalAddedStock - totalSold;
+  // 🟢 Admin overwrite stock
+  if (payload.availableStock !== undefined) {
+    product.availableStock = payload.availableStock;
   }
 
-  const updatedProduct = await Product.findByIdAndUpdate(
-    productId,
-    payload,
-    { new: true, runValidators: true }
-  );
+  // 🔹 Always maintain totalAddedStock
+  product.totalAddedStock = (product.availableStock ?? 0) + (product.totalSold ?? 0);
 
-  return updatedProduct;
+  // 🔹 Update other fields
+  const updatableFields = { ...payload };
+  delete updatableFields.availableStock; // already handled
+  Object.assign(product, updatableFields);
 
+  await product.save();
+  return product;
 };
+
 
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug });

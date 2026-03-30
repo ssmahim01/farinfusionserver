@@ -128,10 +128,6 @@ productSchema.pre("save", async function (next) {
         this.slug = slug;
     }
 
-    // availableStock auto calculate
-    this.availableStock =
-        (this.totalAddedStock || 0) - (this.totalSold || 0);
-
 });
 
 

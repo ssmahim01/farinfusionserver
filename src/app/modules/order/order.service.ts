@@ -171,6 +171,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
         if (product) {
           product.totalSold = (product.totalSold || 0) + p.quantity;
+            product.availableStock = (product.availableStock ?? 0) - p.quantity;
           await product.save({ session });
         }
       })
