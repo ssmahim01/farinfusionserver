@@ -7,20 +7,47 @@ import { Role } from "./user.interface";
 import { multerUpload } from "../../config/multer.config";
 const router = express.Router();
 
-router.post('/create-user', multerUpload.single('picture'), validateRequest(createUserZodSchema),  UserControllers.createUser)
-router.get('/me', checkAuth(...Object.values(Role)), UserControllers.getMe)
-router.patch("/update-profile", checkAuth(...Object.values(Role)), multerUpload.single('picture'), validateRequest(updateUserZodSchema), UserControllers.updateProfile),
-router.get("/all-users", checkAuth(Role.ADMIN), UserControllers.getAllUsers)
-router.get("/all-trash-users", checkAuth(Role.ADMIN), UserControllers.getAllTrashUsers)
-router.get("/all-customers", checkAuth(Role.ADMIN), UserControllers.getAllCustomers)
-router.get("/all-trash-customers", checkAuth(Role.ADMIN), UserControllers.getAllTrashCustomers)
-router.get("/:id", checkAuth(...Object.values(Role)), UserControllers.getSingleUser)
-router.patch("/:id",
-    multerUpload.single("file"),
-    validateRequest(updateUserZodSchema),
-    checkAuth(...Object.values(Role)),
-    UserControllers.updateUser),
-
-    router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser)
+router.post(
+  "/create-user",
+  multerUpload.single("picture"),
+  validateRequest(createUserZodSchema),
+  UserControllers.createUser,
+);
+router.get("/me", checkAuth(...Object.values(Role)), UserControllers.getMe);
+router.patch(
+  "/update-profile",
+  checkAuth(...Object.values(Role)),
+  multerUpload.single("picture"),
+  validateRequest(updateUserZodSchema),
+  UserControllers.updateProfile,
+);
+router.get("/all-users", checkAuth(Role.ADMIN), UserControllers.getAllUsers);
+router.get(
+  "/all-trash-users",
+  checkAuth(Role.ADMIN),
+  UserControllers.getAllTrashUsers,
+);
+router.get(
+  "/all-customers",
+  checkAuth(Role.ADMIN),
+  UserControllers.getAllCustomers,
+);
+router.get(
+  "/all-trash-customers",
+  checkAuth(Role.ADMIN),
+  UserControllers.getAllTrashCustomers,
+);
+router.get(
+  "/:id",
+  checkAuth(...Object.values(Role)),
+  UserControllers.getSingleUser,
+);
+router.patch(
+  "/:id",
+  multerUpload.single("file"),
+  validateRequest(updateUserZodSchema),
+  checkAuth(...Object.values(Role)),
+  UserControllers.updateUser,
+);
+router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser);
 export const userRoutes = router;
-

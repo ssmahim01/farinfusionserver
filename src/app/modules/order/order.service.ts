@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import httpStatus from "http-status-codes"
 import mongoose, { Types } from "mongoose";
@@ -19,8 +22,9 @@ import AppError from "../../errorHelpers/appError";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { orderSearchableFields } from "./order.constants";
 import { Role } from "../user/user.interface";
+import { CourierServices } from "../courier/courier.service";
 
-type TCreateOrderPayload = {
+interface TCreateOrderPayload {
   orderType: OrderType;
   paymentMethod?: PaymentMethod;
   products: IOrderProduct[];
@@ -223,15 +227,28 @@ const deleteOrder = async (id: string) => {
 
 const updateOrder = async (orderId: string, payload: Partial<any>) => {
   const existingOrder = await Order.findById(orderId);
+
   if (!existingOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
 
-  // Optional: restrict certain fields if needed (like totalPrice)
+  const prevStatus = existingOrder.orderStatus;
+
   const updatedOrder = await Order.findByIdAndUpdate(orderId, payload, {
     new: true,
     runValidators: true,
   });
+
+  if (
+    prevStatus !== OrderStatus.CONFIRMED &&
+    payload.orderStatus === OrderStatus.CONFIRMED
+  ) {
+    try {
+      await CourierServices.createCourier(orderId);
+    } catch (err) {
+      console.error("Courier trigger failed:", err);
+    }
+  }
 
   return updatedOrder;
 };
@@ -292,7 +309,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   }
 
   // 3️⃣ Initialize query builder
-  let queryBuilder = new QueryBuilder(baseQuery, query)
+  const queryBuilder = new QueryBuilder(baseQuery, query)
     .search(orderSearchableFields)
     .filter()
     .sort()
