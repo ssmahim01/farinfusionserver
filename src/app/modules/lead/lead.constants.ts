@@ -1,0 +1,1 @@
+export const leadSearchableFields = ["name", "email", "phone", "address"];

@@ -1,0 +1,1 @@
+export const orderSearchableFields = ["billingDetails.fullName", "billingDetails.email", "billingDetails.address", "customer.name", "customer.email",  "customer.address", "customOrderId" , "status", "payment.transactionId"];

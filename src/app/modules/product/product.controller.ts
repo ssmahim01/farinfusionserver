@@ -1,0 +1,130 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import httpStatus from 'http-status-codes';
+import { NextFunction, Request, Response } from "express"
+
+import { CategoryServices } from './product.service';
+import { catchAsync } from '../../utils/catchAsync';
+import { sendResponse } from '../../utils/sendResponse';
+import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
+import AppError from '../../errorHelpers/appError';
+import { Product } from './product.model';
+
+const createProduct = catchAsync(async (req: Request, res: Response) => {
+    const payload = req.body;
+
+    // 🔹 Handle multiple images uploaded via multer
+  if (req.files && Array.isArray(req.files)) {
+    payload.images = (req.files as Express.Multer.File[]).map(
+      (file) => file.path
+    );
+  }
+
+    const product = await CategoryServices.createProductService(payload)
+
+    sendResponse(res, {
+        statusCode: httpStatus.CREATED,
+        success: true,
+        message: "Product Created Successfully",
+        data: product
+    })
+})
+
+const getSingleProduct = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const productSlug = req.params.slug as string
+    const result = await CategoryServices.getSingleProduct(productSlug);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Product Retrieved Successfully",
+        data: result.data
+    })
+})
+
+const deleteProduct = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const productId = req.params.id as string
+    const result = await CategoryServices.deleteProduct(productId);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Product Deleted Successfully",
+        data: result.data
+    })
+})
+
+const updateProduct = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        const productId = req.params.id as string;
+        const payload = req.body;
+
+        // Find existing product
+        const existingProduct = await Product.findById(productId);
+
+        if (!existingProduct) {
+            throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+        }
+
+       // If new images uploaded
+    if (req.files && Array.isArray(req.files)) {
+      const newImages = (req.files as Express.Multer.File[]).map(
+        (file) => file.path
+      );
+
+      // delete old images
+      if (existingProduct.images?.length) {
+        await Promise.all(
+          existingProduct.images.map((img) =>
+            deleteImageFromCloudinary(img)
+          )
+        );
+      }
+
+      payload.images = newImages;
+    }
+
+        const product = await CategoryServices.updateProduct(productId, payload);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Product Updated Successfully",
+            data: product,
+        });
+    }
+);
+
+const getAllProducts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const query = req.query;
+    const result = await CategoryServices.getAllProducts(query as Record<string, string>);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "All Products Retrieved Successfully",
+        data: result.data,
+        meta: result.meta
+    })
+})
+
+const getAllTrashProducts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const query = req.query;
+    const result = await CategoryServices.getAllTrashProducts(query as Record<string, string>);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "All Trash Products Retrieved Successfully",
+        data: result.data,
+        meta: result.meta
+    })
+})
+
+export const ProductControllers = {
+    createProduct,
+    getSingleProduct,
+    deleteProduct,
+    updateProduct,
+    getAllProducts,
+    getAllTrashProducts
+}
