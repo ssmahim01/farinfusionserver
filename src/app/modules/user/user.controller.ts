@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { NextFunction, Request, Response } from "express";
@@ -9,7 +10,6 @@ import { sendResponse } from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
 
 const createUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    console.log("User request ", req.body)
     const user = await UserServices.createUserService(req.body)
 
     sendResponse(res, {
@@ -128,7 +128,6 @@ const getAllTrashCustomers = catchAsync(async (req: Request, res: Response, next
 
 const updateProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const payload = req.body;
-    console.log(payload )
 
     if (req.file) {
         payload.picture = (req.file as any).path;
