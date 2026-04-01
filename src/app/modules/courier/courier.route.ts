@@ -24,4 +24,22 @@ router.get(
   CourierControllers.trackCourier
 );
 
+router.get(
+  "/",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  CourierControllers.getAllCouriers
+);
+
+router.get(
+  "/:id",
+  checkAuth(...Object.values(Role)),
+  CourierControllers.getSingleCourier
+);
+
+router.get(
+  "/order/:orderId",
+  checkAuth(...Object.values(Role)),
+  CourierControllers.getCourierByOrderId
+);
+
 export const courierRoutes = router;

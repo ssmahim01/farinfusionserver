@@ -3,6 +3,7 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { CourierServices } from "./courier.service";
+import { Courier } from "./courier.model";
 
 const createCourier = catchAsync(async (req: Request, res: Response) => {
   const { orderId } = req.body;
@@ -30,7 +31,45 @@ const trackCourier = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getCourierByOrderId = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+
+  const result = await Courier.findOne({ order: orderId });
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Courier fetched successfully",
+    data: result,
+  });
+});
+
+const getSingleCourier = catchAsync(async (req, res) => {
+  const result = await Courier.findById(req.params.id);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Courier fetched",
+    data: result,
+  });
+});
+
+const getAllCouriers = catchAsync(async (req, res) => {
+  const couriers = await Courier.find();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Couriers fetched",
+    data: couriers,
+  });
+});
+
 export const CourierControllers = {
   createCourier,
   trackCourier,
+  getAllCouriers,
+  getSingleCourier,
+  getCourierByOrderId,
 };

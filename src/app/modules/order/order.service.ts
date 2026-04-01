@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import httpStatus from "http-status-codes"
@@ -225,29 +224,29 @@ const deleteOrder = async (id: string) => {
   return { data: null };
 };
 
-const updateOrder = async (orderId: string, payload: Partial<any>) => {
+const updateOrder = async (orderId: string, payload: any) => {
   const existingOrder = await Order.findById(orderId);
 
   if (!existingOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
 
   const prevStatus = existingOrder.orderStatus;
 
   const updatedOrder = await Order.findByIdAndUpdate(orderId, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 
+  if (!updatedOrder) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order update failed");
+  }
+
   if (
     prevStatus !== OrderStatus.CONFIRMED &&
-    payload.orderStatus === OrderStatus.CONFIRMED
+    updatedOrder.orderStatus === OrderStatus.CONFIRMED
   ) {
-    try {
-      await CourierServices.createCourier(orderId);
-    } catch (err) {
-      console.error("Courier trigger failed:", err);
-    }
+    await CourierServices.createCourier(orderId);
   }
 
   return updatedOrder;
