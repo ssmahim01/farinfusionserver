@@ -120,11 +120,28 @@ const getAllTrashProducts = catchAsync(async (req: Request, res: Response, next:
     })
 })
 
+// trash update
+const updateProductTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const productId = req.params.id as string;
+
+        const product = await CategoryServices.updateProductTrash(productId);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Product Trash Status Updated",
+            data: product,
+        });
+    }
+);
+
 export const ProductControllers = {
     createProduct,
     getSingleProduct,
     deleteProduct,
     updateProduct,
     getAllProducts,
-    getAllTrashProducts
+    getAllTrashProducts,
+    updateProductTrash
 }
