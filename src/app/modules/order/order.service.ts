@@ -337,7 +337,6 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     })
     .exec();
 
-  // 5️⃣ Get meta (pagination info)
   const meta = await queryBuilder.getMeta();
 
   return {
