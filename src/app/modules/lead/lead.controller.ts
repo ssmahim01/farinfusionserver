@@ -5,6 +5,7 @@ import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { LeadServices } from './lead.service';
 import { JwtPayload } from 'jsonwebtoken';
+import {Lead} from "./lead.model";
 
 const createLead = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -86,11 +87,29 @@ const getAllTrashLeads = catchAsync(async (req: Request, res: Response, next: Ne
     })
 })
 
+const updateLeadTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, Lead);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
+
 export const LeadControllers = {
     createLead,
     getSingleLead,
     deleteLead,
     updateLead,
     getAllLeads,
-    getAllTrashLeads
+    getAllTrashLeads,
+    updateLeadTrash
 }

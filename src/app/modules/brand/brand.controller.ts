@@ -110,11 +110,28 @@ const getAllTrashBrands = catchAsync(async (req: Request, res: Response, next: N
     })
 })
 
+const updateBrandTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, Brand);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Product Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
 export const BrandControllers = {
  createBrand,
  getSingleBrand,
  deleteBrand,
  updateBrand,
  getAllBrands,
- getAllTrashBrands
+ getAllTrashBrands,
+    updateBrandTrash
 }

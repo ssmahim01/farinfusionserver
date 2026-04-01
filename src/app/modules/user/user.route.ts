@@ -50,4 +50,7 @@ router.patch(
   UserControllers.updateUser,
 );
 router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser);
+
+router.post("/user-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateUserTrash)
+
 export const userRoutes = router;

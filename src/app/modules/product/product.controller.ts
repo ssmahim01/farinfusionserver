@@ -8,6 +8,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import AppError from '../../errorHelpers/appError';
 import { Product } from './product.model';
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -123,15 +124,16 @@ const getAllTrashProducts = catchAsync(async (req: Request, res: Response, next:
 // trash update
 const updateProductTrash = catchAsync(
     async (req: Request, res: Response) => {
-        const productId = req.params.id as string;
+        const id = req.params.id as string;
 
-        const product = await CategoryServices.updateProductTrash(productId);
+        // @ts-expect-error
+        const productData = await CommonTrashService(id, Product);
 
         sendResponse(res, {
             statusCode: httpStatus.OK,
             success: true,
             message: "Product Trash Status Updated",
-            data: product,
+            data: productData,
         });
     }
 );

@@ -165,23 +165,6 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
   }
 };
 
-// update product trash service
-const updateProductTrash = async (productId: string) => {
-  const product = await Product.findById(productId);
-
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, "Product not found");
-  }
-
-  // toggle delete (true ↔ false)
-  product.isDeleted = !product.isDeleted;
-
-  await product.save();
-
-  return product;
-};
-
-
 export const CategoryServices = {
   createProductService,
   updateProduct,
@@ -189,5 +172,4 @@ export const CategoryServices = {
   deleteProduct,
   getAllProducts,
   getAllTrashProducts,
-  updateProductTrash
 }
