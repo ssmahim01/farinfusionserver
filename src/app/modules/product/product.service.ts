@@ -164,11 +164,12 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
     meta
   }
 };
+
 export const CategoryServices = {
   createProductService,
   updateProduct,
   getSingleProduct,
   deleteProduct,
   getAllProducts,
-  getAllTrashProducts
+  getAllTrashProducts,
 }

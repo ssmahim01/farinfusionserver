@@ -28,4 +28,7 @@ router.patch(
     CategoryControllers.updateCategory
 )
 
+// trash category
+router.post("/category-trash/:id", checkAuth(Role.ADMIN), CategoryControllers.updateCategoryTrash)
+
 export const categoryRoutes = router;
