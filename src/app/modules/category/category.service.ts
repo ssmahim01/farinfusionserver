@@ -225,50 +225,132 @@ const deleteCategory = async (id: string) => {
     return { data: null };
 };
 
+// const getAllCategories = async (query: Record<string, string>) => {
+//     const queryBuilder = new QueryBuilder(
+//         Category.find({isDeleted: false}).sort({ showOrder: 1 }),
+//         query
+//     );
+//     const categoriesData = queryBuilder
+//         .filter()
+//         .search(categorySearchableFields)
+//         .sort()
+//         .fields()
+//         .paginate();
+//
+//     const [data, meta] = await Promise.all([
+//         categoriesData.build(),
+//         queryBuilder.getMeta()
+//     ])
+//
+//     return {
+//         data,
+//         meta
+//     }
+// };
+
 const getAllCategories = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
-        Category.find({isDeleted: false}).sort({ showOrder: 1 }),
+        Category.find({ isDeleted: false }).sort({ showOrder: 1 }),
         query
     );
-    const categoriesData = queryBuilder
+
+    const categoriesQuery = queryBuilder
         .filter()
         .search(categorySearchableFields)
         .sort()
         .fields()
-        .paginate();
+        .paginate()
+        .build()
+        .populate({
+            path: "products", // ✅ correct
+            match: { isDeleted: false },
+            select: "_id",
+        });
 
-    const [data, meta] = await Promise.all([
-        categoriesData.build(),
+    const [categories, meta] = await Promise.all([
+        categoriesQuery,
         queryBuilder.getMeta()
-    ])
+    ]);
+
+    // ✅ count add
+    const data = categories.map((cat: any) => {
+        const obj = cat.toObject();
+
+        return {
+            ...obj,
+            productCount: obj.products?.length || 0,
+            products: undefined, // optional hide
+        };
+    });
 
     return {
         data,
         meta
-    }
+    };
 };
+
+// const getAllTrashCategories = async (query: Record<string, string>) => {
+//     const queryBuilder = new QueryBuilder(
+//         Category.find({isDeleted: true}).sort({ showOrder: 1 }),
+//         query
+//     );
+//     const categoriesData = queryBuilder
+//         .filter()
+//         .search(categorySearchableFields)
+//         .sort()
+//         .fields()
+//         .paginate();
+//
+//     const [data, meta] = await Promise.all([
+//         categoriesData.build(),
+//         queryBuilder.getMeta()
+//     ])
+//
+//     return {
+//         data,
+//         meta
+//     }
+// };
 
 const getAllTrashCategories = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
-        Category.find({isDeleted: true}).sort({ showOrder: 1 }),
+        Category.find({ isDeleted: true }).sort({ showOrder: 1 }),
         query
     );
-    const categoriesData = queryBuilder
+
+    const categoriesQuery = queryBuilder
         .filter()
         .search(categorySearchableFields)
         .sort()
         .fields()
-        .paginate();
+        .paginate()
+        .build()
+        .populate({
+            path: "products",
+            match: { isDeleted: false },
+            select: "_id",
+        });
 
-    const [data, meta] = await Promise.all([
-        categoriesData.build(),
+    const [categories, meta] = await Promise.all([
+        categoriesQuery,
         queryBuilder.getMeta()
-    ])
+    ]);
+
+    // count add
+    const data = categories.map((cat: any) => {
+        const obj = cat.toObject();
+
+        return {
+            ...obj,
+            productCount: obj.products?.length || 0,
+            products: undefined, // optional hide
+        };
+    });
 
     return {
         data,
         meta
-    }
+    };
 };
 
 export const CategoryServices = {
