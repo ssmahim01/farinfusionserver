@@ -231,7 +231,7 @@ const updateOrder = async (orderId: string, payload: any) => {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
 
-  const prevStatus = existingOrder.orderStatus;
+  // const prevStatus = existingOrder.orderStatus;
 
   const updatedOrder = await Order.findByIdAndUpdate(orderId, payload, {
     returnDocument: "after",
@@ -241,14 +241,6 @@ const updateOrder = async (orderId: string, payload: any) => {
   if (!updatedOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order update failed");
   }
-
-  if (
-    prevStatus !== OrderStatus.CONFIRMED &&
-    updatedOrder.orderStatus === OrderStatus.CONFIRMED
-  ) {
-    await CourierServices.createCourier(orderId);
-  }
-
   return updatedOrder;
 };
 
