@@ -8,6 +8,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import AppError from '../../errorHelpers/appError';
 import { Category } from './category.model';
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createCategory = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;

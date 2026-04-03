@@ -51,6 +51,7 @@ router.patch(
 );
 router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser);
 
-router.post("/user-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateUserTrash)
+router.post("/user-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateUserTrash);
+router.post("/customer-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateCustomerTrash);
 
 export const userRoutes = router;

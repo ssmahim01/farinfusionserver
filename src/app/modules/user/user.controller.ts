@@ -9,6 +9,7 @@ import { IUser } from "./user.interface";
 import { sendResponse } from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
 import {User} from "./user.model";
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const user = await UserServices.createUserService(req.body)
@@ -143,6 +144,7 @@ const updateProfile = catchAsync(async (req: Request, res: Response, next: NextF
     })
 })
 
+// update user trash
 const updateUserTrash = catchAsync(
     async (req: Request, res: Response) => {
         const id = req.params.id as string;
@@ -159,6 +161,25 @@ const updateUserTrash = catchAsync(
     }
 );
 
+// update customer trash
+const updateCustomerTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, User);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
+
+
 export const UserControllers = {
     createUser,
     getMe,
@@ -170,5 +191,6 @@ export const UserControllers = {
     updateUser,
     deleteUser,
     updateProfile,
-    updateUserTrash
+    updateUserTrash,
+    updateCustomerTrash,
 }
