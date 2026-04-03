@@ -27,7 +27,7 @@ const mapOrderToSteadfast = (order: any) => ({
 });
 
 const createCourier = async (orderId: string) => {
-  const order = await Order.findById(orderId);
+  const order = await Order.findById({_id: orderId});
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
