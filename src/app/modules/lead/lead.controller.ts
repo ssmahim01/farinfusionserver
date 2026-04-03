@@ -6,6 +6,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { LeadServices } from './lead.service';
 import { JwtPayload } from 'jsonwebtoken';
 import {Lead} from "./lead.model";
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createLead = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -76,7 +77,7 @@ const getAllLeads = catchAsync(async (req: Request, res: Response, next: NextFun
 
 const getAllTrashLeads = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
-    const result = await LeadServices.getAllLeads(query as Record<string, string>);
+    const result = await LeadServices.getAllTrashLeads(query as Record<string, string>);
 
     sendResponse(res, {
         success: true,
