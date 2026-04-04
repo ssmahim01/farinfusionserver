@@ -87,7 +87,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     /* ---------- ORDER DOC ---------- */
 
     const orderDoc: any = {
-      customOrderId: `ORD-${customOrderId}`, // ✅ nice format
+      customOrderId: `ORD-${customOrderId}`, 
       orderType: payload.orderType,
 
       products: calculatedOrder.productsWithPrice,
@@ -99,8 +99,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderStatus: OrderStatus.PENDING,
     };
 
-    /* ---------- USER (OPTIONAL) ---------- */
-
     const isUserExist = await User.findOne({ email: payload?.billingDetails?.email }).session(session);;
 
     if (isUserExist) {
@@ -108,24 +106,16 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     }
 
 
-    /* ---------- BILLING DETAILS ---------- */
-
     if (payload.billingDetails) {
       orderDoc.billingDetails = payload.billingDetails;
     }
-
-    /* ---------- POS ORDER ---------- */
 
     if (payload.orderType === OrderType.POS) {
       orderDoc.seller = payload.seller;
     }
 
-    /* ---------- CREATE ORDER ---------- */
-
     const [order] = await Order.create([orderDoc], { session });
     const orderId = order._id;
-
-    /* ---------- CREATE PAYMENT ---------- */
 
     const transactionId = getTransactionId();
 
@@ -147,26 +137,19 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       { session }
     );
 
-    /* ---------- UPDATE ORDER WITH PAYMENT ---------- */
-
     updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       {
         payment: payment._id,
         transactionId,
 
-        orderStatus:
-          payload.paymentMethod === PaymentMethod.COD
-            ? OrderStatus.CONFIRMED
-            : OrderStatus.PENDING,
+        orderStatus: OrderStatus.PENDING,
       },
       { returnDocument: "after", session }
     )
       .populate("customer", "name email _id role phone")
       .populate("seller", "name email _id role phone")
       .populate("products.product");
-
-    /* ---------- UPDATE PRODUCT SALES ---------- */
 
     await Promise.all(
       payload.products.map(async (p) => {
@@ -179,8 +162,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         }
       })
     );
-
-    /* ---------- COMMIT ---------- */
 
     await session.commitTransaction();
     session.endSession();
