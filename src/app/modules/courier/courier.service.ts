@@ -22,7 +22,12 @@ const mapOrderToSteadfast = (order: any) => ({
   recipient_address: order.billingDetails?.address,
   cod_amount: order.total,
   note: "Auto generated order",
-  item_description: order.products?.map((p: any) => p.product).join(", "),
+ item_description: order.products
+  ?.map((p: any) => {
+    const name = p.product?.title || p.product || "Item";
+    return `${name} x${p.quantity}`;
+  })
+  .join(", "),
   delivery_type: 0,
 });
 

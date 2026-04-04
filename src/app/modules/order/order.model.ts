@@ -44,6 +44,7 @@ const orderSchema = new Schema<IOrder>(
           type: Schema.Types.ObjectId,
           ref: "Product"
         },
+        title: String,
         quantity: Number,
         price: Number
       }
