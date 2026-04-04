@@ -101,8 +101,8 @@ export const createProductZodSchema = z.object({
     .boolean({ invalid_type_error: "isDeleted must be true or false" })
     .optional(),
   // Media
-  images: z
-    .array(z.string({ invalid_type_error: "Image must be a string" })).optional(),
+  // images: z
+  //   .array(z.string({ invalid_type_error: "Image must be a string" })).optional(),
 
   // Ratings
   ratings: z

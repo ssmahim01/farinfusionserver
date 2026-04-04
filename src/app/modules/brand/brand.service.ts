@@ -85,6 +85,7 @@ const deleteBrand = async (id: string) => {
 //         meta
 //     }
 // };
+
 const getAllBrands = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
         Brand.find({ isDeleted: false }).sort({ createdAt: -1 }),
