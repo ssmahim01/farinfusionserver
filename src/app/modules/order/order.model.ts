@@ -53,6 +53,7 @@ const orderSchema = new Schema<IOrder>(
     subtotal: Number,
     shippingCost: Number,
     total: Number,
+    note: String,
 
     transactionId: String,
     payment: String,

@@ -51,6 +51,7 @@ export interface IOrder {
 
   subtotal: number;
   shippingCost: number;
+  note: string;
   total: number;
 
   transactionId?: string;

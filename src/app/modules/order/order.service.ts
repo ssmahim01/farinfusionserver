@@ -27,6 +27,7 @@ interface TCreateOrderPayload {
   orderType: OrderType;
   paymentMethod?: PaymentMethod;
   products: IOrderProduct[];
+  note: string;
   shippingCost?: number;
 
 
@@ -139,11 +140,13 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
     updatedOrder = await Order.findByIdAndUpdate(
       orderId,
+     
       {
         payment: payment._id,
         transactionId,
 
         orderStatus: OrderStatus.PENDING,
+         note: payload.note || "Auto generated order",
       },
       { returnDocument: "after", session }
     )
