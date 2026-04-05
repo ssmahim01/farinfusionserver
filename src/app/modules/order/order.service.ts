@@ -1,20 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import httpStatus from "http-status-codes"
+import httpStatus from "http-status-codes";
 import mongoose, { Types } from "mongoose";
-import {
-  IOrderProduct,
-  OrderStatus,
-  OrderType,
-} from "./order.interface";
+import { IOrderProduct, OrderStatus, OrderType } from "./order.interface";
 import { Counter, Order } from "./order.model";
 import { calculateOrderPrice } from "../../utils/calculateOrderTotal";
 import { Payment } from "../payment/payment.model";
-import {
-  PaymentMethod,
-  PaymentStatus,
-} from "../payment/payment.interface";
+import { PaymentMethod, PaymentStatus } from "../payment/payment.interface";
 import { Product } from "../product/product.model";
 import { User } from "../user/user.model";
 import AppError from "../../errorHelpers/appError";
@@ -26,10 +19,11 @@ import { CourierServices } from "../courier/courier.service";
 interface TCreateOrderPayload {
   orderType: OrderType;
   paymentMethod?: PaymentMethod;
+  total: number;
+  discount?: number;
   products: IOrderProduct[];
   note: string;
   shippingCost?: number;
-
 
   billingDetails: {
     fullName?: string;
@@ -39,7 +33,7 @@ interface TCreateOrderPayload {
   };
   user?: string;
   seller?: string;
-};
+}
 
 const getTransactionId = () => {
   return `Tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -56,7 +50,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     /* ---------- ORDER ID GENERATOR ---------- */
 
     const getNextCustomOrderId = async (
-      session: mongoose.ClientSession
+      session: mongoose.ClientSession,
     ): Promise<number> => {
       let counter = await Counter.findById("orderId").session(session);
 
@@ -82,36 +76,41 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
     const calculatedOrder = await calculateOrderPrice(
       payload.products,
-      payload.shippingCost || 0
+      payload.shippingCost || 0,
     );
 
     /* ---------- ORDER DOC ---------- */
 
     const orderDoc: any = {
-      customOrderId: `ORD-${customOrderId}`, 
+      customOrderId: `ORD-${customOrderId}`,
       orderType: payload.orderType,
 
       products: calculatedOrder.productsWithPrice,
 
       subtotal: calculatedOrder.subtotal,
       shippingCost: calculatedOrder.shippingCost,
-      total: calculatedOrder.totalPrice,
+      total: payload?.total,
+      discount: payload?.discount || 0,
 
       orderStatus: OrderStatus.PENDING,
     };
 
-    const isUserExist = await User.findOne({ email: payload?.billingDetails?.email }).session(session);;
+    const isUserExist = await User.findOne({
+      email: payload?.billingDetails?.email,
+    }).session(session);
 
     if (isUserExist) {
       orderDoc.customer = isUserExist?._id;
     }
-
 
     if (payload.billingDetails) {
       orderDoc.billingDetails = payload.billingDetails;
     }
 
     if (payload.orderType === OrderType.POS) {
+      if (!payload.seller) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Seller required");
+      }
       orderDoc.seller = payload.seller;
     }
 
@@ -135,20 +134,20 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           paymentMethod: payload.paymentMethod,
         },
       ],
-      { session }
+      { session },
     );
 
     updatedOrder = await Order.findByIdAndUpdate(
       orderId,
-     
+
       {
         payment: payment._id,
         transactionId,
 
         orderStatus: OrderStatus.PENDING,
-         note: payload.note || "Auto generated order",
+        note: payload.note || "Auto generated order",
       },
-      { returnDocument: "after", session }
+      { returnDocument: "after", session },
     )
       .populate("customer", "name email _id role phone")
       .populate("seller", "name email _id role phone")
@@ -160,15 +159,14 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
         if (product) {
           product.totalSold = (product.totalSold || 0) + p.quantity;
-            product.availableStock = (product.availableStock ?? 0) - p.quantity;
+          product.availableStock = (product.availableStock ?? 0) - p.quantity;
           await product.save({ session });
         }
-      })
+      }),
     );
 
     await session.commitTransaction();
     session.endSession();
-
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -188,10 +186,11 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 };
 
 const getSingleOrder = async (id: string) => {
-  const order = await Order.findById(id).populate("customer", "name email _id role phone")
-    .populate("seller", "name email _id role phone").
-    populate("payment").
-    populate("products.product");
+  const order = await Order.findById(id)
+    .populate("customer", "name email _id role phone")
+    .populate("seller", "name email _id role phone")
+    .populate("payment")
+    .populate("products.product");
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
@@ -229,32 +228,41 @@ const updateOrder = async (orderId: string, payload: any) => {
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Order.find({ isDeleted: false }), query);
-  const ordersData = queryBuilder.filter().search(orderSearchableFields).sort().fields().paginate().build()
+  const queryBuilder = new QueryBuilder(
+    Order.find({ isDeleted: false }),
+    query,
+  );
+  const ordersData = queryBuilder
+    .filter()
+    .search(orderSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");;
+    .populate("products.product");
 
-  const [data, meta] = await Promise.all([
-    ordersData,
-    queryBuilder.getMeta(),
-  ]);
+  const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
   return { data, meta };
 };
 
 const getAllTrashOrders = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(Order.find({ isDeleted: true }), query);
-  const ordersData = queryBuilder.filter().search(orderSearchableFields).sort().fields().paginate().build()
+  const ordersData = queryBuilder
+    .filter()
+    .search(orderSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");;
+    .populate("products.product");
 
-  const [data, meta] = await Promise.all([
-    ordersData,
-    queryBuilder.getMeta(),
-  ]);
+  const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
   return { data, meta };
 };
 
@@ -320,7 +328,6 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   };
 };
 
-
 export const OrderServices = {
   createOrder,
   getSingleOrder,
@@ -328,5 +335,5 @@ export const OrderServices = {
   getAllTrashOrders,
   updateOrder,
   deleteOrder,
-  getMyOrders
+  getMyOrders,
 };

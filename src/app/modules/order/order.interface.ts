@@ -50,6 +50,7 @@ export interface IOrder {
   products: IOrderProduct[];
 
   subtotal: number;
+  discount: number
   shippingCost: number;
   note: string;
   total: number;
