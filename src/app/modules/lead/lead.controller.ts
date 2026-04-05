@@ -11,7 +11,9 @@ import {CommonTrashService} from "../common/CommonTrashService";
 const createLead = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
 
-    const lead = await LeadServices.createLeadService(payload)
+    const user = req.user as JwtPayload; 
+
+    const lead = await LeadServices.createLeadService(payload, user);
 
     sendResponse(res, {
         statusCode: httpStatus.CREATED,
@@ -92,6 +94,7 @@ const updateLeadTrash = catchAsync(
     async (req: Request, res: Response) => {
         const id = req.params.id as string;
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         const Data = await CommonTrashService(id, Lead);
 

@@ -100,6 +100,24 @@ const updateOrder = catchAsync(
     });
   }
 );
+const updateCompleteOrder = catchAsync(
+  async (req: Request, res: Response) => {
+    const orderId = req.params.id as string;
+    const payload = req.body;
+
+    const result = await OrderServices.updateOrder(
+      orderId,
+      payload
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Order status changed to completed",
+      data: result,
+    });
+  }
+);
 
 const deleteOrder = catchAsync(
   async (req: Request, res: Response) => {
@@ -123,5 +141,6 @@ export const OrderControllers = {
   getAllTrashOrders,
   getSingleOrder,
   updateOrder,
+  updateCompleteOrder,
   deleteOrder,
 };
