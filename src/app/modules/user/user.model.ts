@@ -20,7 +20,8 @@ const userSchema = new Schema<IUser>({
         default: IsActive.ACTIVE
     },
     isVerified: {type: Boolean, default: false},
-    salary: {type: Number}
+    salary: {type: Number},
+    commissionSalary: {type: Number}
 
 }, {
     timestamps: true,

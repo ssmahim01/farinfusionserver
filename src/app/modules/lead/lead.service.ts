@@ -10,10 +10,18 @@ import { JwtPayload } from "jsonwebtoken";
 
 const createLeadService = async (payload: any, user: JwtPayload) => {
 
+    const existingLead = await Lead.findOne({ phone: payload.phone });
+
+    if (existingLead) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Lead with this phone number already exists"
+        );
+    }
+
     const leadData = {
         ...payload,
-
-        assignedBy: user.userId, 
+        assignedBy: user.userId,
     };
 
     const lead = await Lead.create(leadData);
