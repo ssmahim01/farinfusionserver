@@ -12,7 +12,7 @@ router.post(
     '/create-product', 
     checkAuth(Role.ADMIN),
     multerUpload.array('images', 3),
-    validateRequest(createProductZodSchema), 
+    validateRequest(createProductZodSchema),
     ProductControllers.createProduct
 )
 

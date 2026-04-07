@@ -117,11 +117,10 @@ const updateCategory = async (
   categoryId: string,
   payload: Partial<ICategory>
 ) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+
 
   try {
-    const existingCategory = await Category.findById(categoryId).session(session);
+    const existingCategory = await Category.findById(categoryId);
 
     if (!existingCategory) {
       throw new AppError(httpStatus.NOT_FOUND, "Category not found");
@@ -136,7 +135,6 @@ const updateCategory = async (
       await Category.findByIdAndUpdate(
         categoryId,
         { showOrder: -1 },
-        { session }
       );
 
       if (newOrder < oldOrder) {
@@ -145,13 +143,11 @@ const updateCategory = async (
           showOrder: { $gte: newOrder, $lt: oldOrder },
         })
           .sort({ showOrder: -1 })
-          .session(session);
 
         for (const cat of categories) {
           await Category.updateOne(
             { _id: cat._id },
             { $inc: { showOrder: 1 } },
-            { session }
           );
         }
 
@@ -161,13 +157,13 @@ const updateCategory = async (
           showOrder: { $gt: oldOrder, $lte: newOrder },
         })
           .sort({ showOrder: 1 })
-          .session(session);
+          // .session(session);
 
         for (const cat of categories) {
           await Category.updateOne(
             { _id: cat._id },
             { $inc: { showOrder: -1 } },
-            { session }
+            // { session }
           );
         }
       }
@@ -178,17 +174,13 @@ const updateCategory = async (
     const updatedCategory = await Category.findByIdAndUpdate(
       categoryId,
       payload,
-      { new: true, runValidators: true, session }
+      { new: true, runValidators: true }
     );
 
-    await session.commitTransaction();
-    session.endSession();
 
     return updatedCategory;
 
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     throw error;
   }
 };
@@ -250,7 +242,7 @@ const deleteCategory = async (id: string) => {
 
 const getAllCategories = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
-        Category.find({ isDeleted: false }).sort({ showOrder: 1 }),
+        Category.find({ isDeleted: false }).sort({ showOrder: -1 }),
         query
     );
 
