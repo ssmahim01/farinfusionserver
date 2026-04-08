@@ -5,7 +5,7 @@ dotenv.config()
 interface EnvConfig {
     PORT: string,
     DB_URL: string;
-    NODE_ENV: "development" | "production",
+    NODE_ENV: "production" | "development",
     BCRYPT_SALT_ROUND: string,
     JWT_ACCESS_SECRET: string,
     JWT_ACCESS_EXPIRES: string,
