@@ -26,6 +26,9 @@ const categorySchema = new Schema<ICategory>({
         enum: Object.values(CategoryStatus),
         default: CategoryStatus.ACTIVE,
     },
+    productCount :{
+        type: Number,
+    },
     showOrder: {
         type: Number,
         default: 1,
@@ -35,6 +38,16 @@ const categorySchema = new Schema<ICategory>({
 }, {
     timestamps: true,
 });
+
+categorySchema.virtual("products", {
+    ref: "Product",
+    localField: "_id",
+    foreignField: "category",
+});
+
+categorySchema.set("toObject", { virtuals: true });
+categorySchema.set("toJSON", { virtuals: true });
+
 
 categorySchema.pre("save", async function (next) {
 

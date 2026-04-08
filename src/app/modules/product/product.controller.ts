@@ -8,6 +8,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import AppError from '../../errorHelpers/appError';
 import { Product } from './product.model';
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -53,6 +54,47 @@ const deleteProduct = catchAsync(async (req: Request, res: Response, next: NextF
     })
 })
 
+// const updateProduct = catchAsync(
+//     async (req: Request, res: Response, next: NextFunction) => {
+//         const productId = req.params.id as string;
+//         const payload = req.body;
+//
+//         // Find existing product
+//         const existingProduct = await Product.findById(productId);
+//
+//         if (!existingProduct) {
+//             throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+//         }
+//
+//        // If new images uploaded
+//     if (req.files && Array.isArray(req.files)) {
+//       const newImages = (req.files as Express.Multer.File[]).map(
+//         (file) => file.path
+//       );
+//
+//       // delete old images
+//       if (existingProduct.images?.length && newImages.length < 0) {
+//         await Promise.all(
+//           existingProduct.images.map((img) =>
+//             deleteImageFromCloudinary(img)
+//           )
+//         );
+//       }
+//
+//       payload.images = newImages;
+//     }
+//
+//         const product = await CategoryServices.updateProduct(productId, payload);
+//
+//         sendResponse(res, {
+//             statusCode: httpStatus.OK,
+//             success: true,
+//             message: "Product Updated Successfully",
+//             data: product,
+//         });
+//     }
+// );
+
 const updateProduct = catchAsync(
     async (req: Request, res: Response, next: NextFunction) => {
         const productId = req.params.id as string;
@@ -65,23 +107,23 @@ const updateProduct = catchAsync(
             throw new AppError(httpStatus.NOT_FOUND, "Product not found");
         }
 
-       // If new images uploaded
-    if (req.files && Array.isArray(req.files)) {
-      const newImages = (req.files as Express.Multer.File[]).map(
-        (file) => file.path
-      );
+        // If new images uploaded
+        if (req.files && Array.isArray(req.files)) {
+            const newImages = (req.files as Express.Multer.File[]).map(
+                (file) => file.path
+            );
 
-      // delete old images
-      if (existingProduct.images?.length) {
-        await Promise.all(
-          existingProduct.images.map((img) =>
-            deleteImageFromCloudinary(img)
-          )
-        );
-      }
+            // delete old images
+            if (existingProduct.images?.length && newImages.length < 0) {
+                await Promise.all(
+                    existingProduct.images.map((img) =>
+                        deleteImageFromCloudinary(img)
+                    )
+                );
+            }
 
-      payload.images = newImages;
-    }
+            payload.images = newImages;
+        }
 
         const product = await CategoryServices.updateProduct(productId, payload);
 
@@ -93,6 +135,7 @@ const updateProduct = catchAsync(
         });
     }
 );
+
 
 const getAllProducts = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
@@ -120,11 +163,29 @@ const getAllTrashProducts = catchAsync(async (req: Request, res: Response, next:
     })
 })
 
+// trash update
+const updateProductTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const productData = await CommonTrashService(id, Product);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Product Trash Status Updated",
+            data: productData,
+        });
+    }
+);
+
 export const ProductControllers = {
     createProduct,
     getSingleProduct,
     deleteProduct,
     updateProduct,
     getAllProducts,
-    getAllTrashProducts
+    getAllTrashProducts,
+    updateProductTrash
 }

@@ -8,6 +8,7 @@ import { sendResponse } from '../../utils/sendResponse';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import AppError from '../../errorHelpers/appError';
 import { Category } from './category.model';
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createCategory = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
@@ -111,11 +112,28 @@ const getAllTrashCategories = catchAsync(async (req: Request, res: Response, nex
     })
 })
 
+const updateCategoryTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, Category);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
 export const CategoryControllers = {
     createCategory,
     getSingleCategory,
     deleteCategory,
     updateCategory,
     getAllCategories,
-    getAllTrashCategories
+    getAllTrashCategories,
+    updateCategoryTrash,
 }

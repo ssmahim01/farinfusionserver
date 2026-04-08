@@ -10,6 +10,7 @@ export enum CourierName {
 export enum CourierStatus {
   PENDING = "PENDING",
   CREATED = "CREATED",
+  DELIVERED = "DELIVERED", 
   FAILED = "FAILED",
 }
 

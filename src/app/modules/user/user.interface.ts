@@ -4,6 +4,7 @@ export enum Role {
     ADMIN = "ADMIN",
     MANAGER = "MANAGER",
     MODERATOR = "MODERATOR",
+    TELLICELSS = "TELLICELSS",
     CUSTOMER = "CUSTOMER"
 }
 
@@ -26,5 +27,6 @@ export interface IUser {
     isVerified?: boolean;
     isDeleted?: boolean;
     salary?: number;
+    commissionSalary?: number;
     role: Role;
 }

@@ -21,13 +21,18 @@ const mapOrderToSteadfast = (order: any) => ({
   recipient_phone: order.billingDetails?.phone,
   recipient_address: order.billingDetails?.address,
   cod_amount: order.total,
-  note: "Auto generated order",
-  item_description: order.products?.map((p: any) => p.product).join(", "),
+  note: order?.note || "Auto generated order",
+ item_description: order.products
+  ?.map((p: any) => {
+    const name = p.product?.title || "Unknown Product";
+    return `${name} x${p.quantity}`;
+  })
+  .join(", "),
   delivery_type: 0,
 });
 
 const createCourier = async (orderId: string) => {
-  const order = await Order.findById(orderId);
+  const order = await Order.findById({_id: orderId}).populate("products.product");
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");

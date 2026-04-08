@@ -21,6 +21,9 @@ const brandSchema = new Schema<IBrand>({
         type: String,
         required: true,
     },
+    productCount : {
+      type: Number,
+    },
     status: {
         type: String,
         enum: Object.values(BrandStatus),
@@ -30,6 +33,15 @@ const brandSchema = new Schema<IBrand>({
 }, {
     timestamps: true,
 });
+
+brandSchema.virtual("products", {
+    ref: "Product",
+    localField: "_id",
+    foreignField: "brand",
+});
+
+brandSchema.set("toObject", { virtuals: true });
+brandSchema.set("toJSON", { virtuals: true });
 
 brandSchema.pre("save", async function (next) {
 

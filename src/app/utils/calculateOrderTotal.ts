@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-inferrable-types */
 // import { Types } from "mongoose";
 // import { Product } from "../modules/product/product.model";
 // import { IOrderProduct } from "../modules/order/order.interface";

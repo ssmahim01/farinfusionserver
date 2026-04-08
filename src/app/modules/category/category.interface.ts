@@ -13,6 +13,7 @@ export interface ICategory {
     description: string;
     image: string;
     status: CategoryStatus;
+    productCount: number;
     showOrder: number;
     isDeleted?: boolean;
 }

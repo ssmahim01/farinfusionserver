@@ -39,6 +39,11 @@ router.patch(
   checkAuth(...Object.values(Role)),
   OrderControllers.updateOrder
 );
+router.patch(
+  "/:id/status",
+  checkAuth(...Object.values(Role)),
+  OrderControllers.updateCompleteOrder
+);
 
 router.delete(
   "/:id",

@@ -19,7 +19,7 @@ export enum LeadPriority {
 export interface ILead {
     _id?: Types.ObjectId;
     name: string;
-    email: string;
+    email?: string;
     phone: string;
     address: string;
     status: LeadStatus;

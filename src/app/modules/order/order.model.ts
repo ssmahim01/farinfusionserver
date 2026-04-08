@@ -44,6 +44,7 @@ const orderSchema = new Schema<IOrder>(
           type: Schema.Types.ObjectId,
           ref: "Product"
         },
+        title: String,
         quantity: Number,
         price: Number
       }
@@ -52,6 +53,8 @@ const orderSchema = new Schema<IOrder>(
     subtotal: Number,
     shippingCost: Number,
     total: Number,
+    discount: Number,
+    note: String,
 
     transactionId: String,
     payment: String,

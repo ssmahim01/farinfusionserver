@@ -12,6 +12,7 @@ export interface IBrand {
     slug: string;
     description: string;
     image: string;
+    productCount: number;
     status: BrandStatus;
     isDeleted?: boolean;
 }

@@ -5,11 +5,15 @@ import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
 import { LeadServices } from './lead.service';
 import { JwtPayload } from 'jsonwebtoken';
+import {Lead} from "./lead.model";
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createLead = catchAsync(async (req: Request, res: Response) => {
     const payload = req.body;
 
-    const lead = await LeadServices.createLeadService(payload)
+    const user = req.user as JwtPayload; 
+
+    const lead = await LeadServices.createLeadService(payload, user);
 
     sendResponse(res, {
         statusCode: httpStatus.CREATED,
@@ -75,7 +79,7 @@ const getAllLeads = catchAsync(async (req: Request, res: Response, next: NextFun
 
 const getAllTrashLeads = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
-    const result = await LeadServices.getAllLeads(query as Record<string, string>);
+    const result = await LeadServices.getAllTrashLeads(query as Record<string, string>);
 
     sendResponse(res, {
         success: true,
@@ -86,11 +90,30 @@ const getAllTrashLeads = catchAsync(async (req: Request, res: Response, next: Ne
     })
 })
 
+const updateLeadTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, Lead);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
+
 export const LeadControllers = {
     createLead,
     getSingleLead,
     deleteLead,
     updateLead,
     getAllLeads,
-    getAllTrashLeads
+    getAllTrashLeads,
+    updateLeadTrash
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import AppError from "../../errorHelpers/appError";
 import httpStatus from 'http-status-codes';
 import { Lead } from "./lead.model";
@@ -7,13 +8,28 @@ import { leadSearchableFields } from "./lead.constants";
 import { JwtPayload } from "jsonwebtoken";
 
 
-const createLeadService = async (payload: Partial<ILead>) => {
-    const isExistLead = await Lead.findOne({ email: payload.email })
-    if (isExistLead) {
-        throw new AppError(httpStatus.CONFLICT, "Lead already exist")
+const createLeadService = async (payload: any, user: JwtPayload) => {
+
+    const existingLead = await Lead.findOne({ phone: payload.phone });
+
+    if (existingLead) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Lead with this phone number already exists"
+        );
     }
-    const lead = await Lead.create(payload);
-    return lead;
+
+    const leadData = {
+        ...payload,
+        assignedBy: user.userId,
+    };
+
+    const lead = await Lead.create(leadData);
+
+    const populatedLead = await Lead.findById(lead._id)
+        .populate("assignedBy", "name email role");
+
+    return populatedLead;
 };
 
 const updateLeadService = async (payload: Partial<ILead>, leadId: string, decodedToken: JwtPayload) => {
@@ -57,7 +73,7 @@ const deleteLead = async (id: string) => {
 
 const getAllLeads = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
-        Lead.find({isDeleted: false}).sort({ createdAt: -1 }),
+        Lead.find({isDeleted: false}).populate("assignedBy", "name email role").sort({ createdAt: -1 }),
         query
     );
     const leadsData = queryBuilder
