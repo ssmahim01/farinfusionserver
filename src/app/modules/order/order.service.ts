@@ -228,10 +228,38 @@ const updateOrder = async (orderId: string, payload: any) => {
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(
-    Order.find({ isDeleted: false }),
-    query,
-  );
+const queryObj: any = {};
+
+// DATE FILTER
+if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  queryObj.createdAt = {};
+
+  if (query["createdAt[gte]"]) {
+    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  }
+
+  if (query["createdAt[lte]"]) {
+    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  }
+}
+
+// STATUS
+if (query.orderStatus) {
+  queryObj.orderStatus = query.orderStatus;
+}
+
+// REMOVE SPECIAL FIELDS
+delete query["createdAt[gte]"];
+delete query["createdAt[lte]"];
+
+const queryBuilder = new QueryBuilder(
+  Order.find({
+    isDeleted: false,
+    ...queryObj,
+  }),
+  query
+);
+
   const ordersData = queryBuilder
     .filter()
     .search(orderSearchableFields)
@@ -268,6 +296,42 @@ const getAllTrashOrders = async (query: Record<string, string>) => {
 
 const getMyOrders = async (userId: string, query: Record<string, string>) => {
   let userObjectId: Types.ObjectId;
+ const queryObj: any = {};
+
+// DATE FILTER
+if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  queryObj.createdAt = {};
+
+  if (query["createdAt[gte]"]) {
+    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  }
+
+  if (query["createdAt[lte]"]) {
+    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  }
+}
+
+// STATUS
+if (query.orderStatus) {
+  queryObj.orderStatus = query.orderStatus;
+}
+
+// REMOVE SPECIAL FIELDS
+delete query["createdAt[gte]"];
+delete query["createdAt[lte]"];
+
+// APPLY TO QUERY
+const queryBuilder = new QueryBuilder(
+  Order.find({
+    isDeleted: false,
+    ...queryObj,
+  }),
+  query
+).search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate();
 
   try {
     userObjectId = new Types.ObjectId(userId);
@@ -291,13 +355,8 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     throw new AppError(httpStatus.FORBIDDEN, "Invalid role for order access");
   }
 
-  // 3️⃣ Initialize query builder
-  const queryBuilder = new QueryBuilder(baseQuery, query)
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate();
+  
+    
 
   // 4️⃣ Execute query + populate
   const orders = await queryBuilder
