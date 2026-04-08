@@ -260,6 +260,34 @@ const queryBuilder = new QueryBuilder(
   query
 );
 
+const stats = await Order.aggregate([
+  {
+    $match: {
+      isDeleted: false,
+      ...queryObj, 
+    },
+  },
+  {
+    $group: {
+      _id: "$orderStatus",
+      count: { $sum: 1 },
+    },
+  },
+]);
+
+const formattedStats = {
+  total: 0,
+  PENDING: 0,
+  CONFIRMED: 0,
+  COMPLETED: 0,
+  CANCELLED: 0,
+};
+
+stats.forEach((item) => {
+  formattedStats[item._id as keyof typeof formattedStats] = item.count;
+  formattedStats.total += item.count;
+});
+
   const ordersData = queryBuilder
     .filter()
     .search(orderSearchableFields)
@@ -273,7 +301,7 @@ const queryBuilder = new QueryBuilder(
     .populate("products.product");
 
   const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
-  return { data, meta };
+  return { data, meta, stats: formattedStats };
 };
 
 const getAllTrashOrders = async (query: Record<string, string>) => {
