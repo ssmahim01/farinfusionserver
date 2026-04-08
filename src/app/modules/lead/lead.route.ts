@@ -27,4 +27,6 @@ router.patch(
     LeadControllers.updateLead
 )
 
+router.post("/lead-trash/:id", checkAuth(Role.ADMIN), LeadControllers.updateLeadTrash)
+
 export const leadRoutes = router;

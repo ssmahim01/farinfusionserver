@@ -98,7 +98,9 @@ const updateProduct = async (
 
 
 const getSingleProduct = async (slug: string) => {
-  const product = await Product.findOne({ slug });
+  const product = await Product.findOne({ slug })
+      .populate("category", "title")
+      .populate("brand", "title");
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found")
   }
@@ -164,11 +166,12 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
     meta
   }
 };
+
 export const CategoryServices = {
   createProductService,
   updateProduct,
   getSingleProduct,
   deleteProduct,
   getAllProducts,
-  getAllTrashProducts
+  getAllTrashProducts,
 }

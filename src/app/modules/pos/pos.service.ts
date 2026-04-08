@@ -1,37 +1,52 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { POSOrder } from "./pos.model";
 import { Product } from "../product/product.model";
 
 const createPOSOrder = async (payload: any, userId: string) => {
-  const { products, customer, orderType } = payload;
 
-  if (!products || products.length === 0) {
-    throw new AppError(httpStatus.BAD_REQUEST, "No products selected");
+  if (!payload) {
+    throw new AppError(400, "Payload is missing");
   }
 
-  let subtotal = 0;
+  const {
+    items,
+    subtotal,
+    tax,
+    deliveryFee,
+    total,
+    orderType,
+
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerAddress,
+    customerCity,
+    customerZipCode,
+    notes,
+  } = payload;
+
+  if (!items || items.length === 0) {
+    throw new AppError(400, "Cart is empty");
+  }
 
   const processedProducts = [];
 
-  for (const item of products) {
-    const product = await Product.findById(item.product);
+  for (const item of items) {
+    const product = await Product.findById(item.product._id);
 
     if (!product) {
-      throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+      throw new AppError(404, "Product not found");
     }
 
-    if (product?.availableStock ?? 0 < item.quantity) {
+    if ((product?.availableStock ?? 0) < item.quantity) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
+        400,
         `${product.title} is out of stock`
       );
     }
 
     const price = product.discountPrice || product.price;
-
-    subtotal += price * item.quantity;
 
     processedProducts.push({
       product: product._id,
@@ -39,22 +54,29 @@ const createPOSOrder = async (payload: any, userId: string) => {
       price,
     });
 
-    product.availableStock = (product.availableStock ?? 0) - item.quantity;
+   product.availableStock = (product.availableStock ?? 0) - item.quantity;
     await product.save();
   }
 
-  const tax = subtotal * 0.15;
-  const deliveryFee = orderType === "DELIVERY" ? 100 : 0;
-  const total = subtotal + tax + deliveryFee;
-
   const order = await POSOrder.create({
     products: processedProducts,
-    customer,
+
+    customer: {
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+      address: customerAddress,
+      city: customerCity,
+      zipCode: customerZipCode,
+      notes,
+    },
+
     orderType,
     subtotal,
     tax,
     deliveryFee,
     total,
+
     createdBy: userId,
   });
 
