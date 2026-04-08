@@ -5,7 +5,7 @@ import { POSServices } from "./pos.service";
 const createPOSOrder = async (req: Request, res: Response) => {
   const result = await POSServices.createPOSOrder(
     req.body,
-    req.user.userId
+    req.user?.userId
   );
 
   res.status(httpStatus.CREATED).json({

@@ -1,38 +1,31 @@
 import { z } from "zod";
 
-const posProductSchema = z.object({
-  product: z.string({
-    required_error: "Product ID is required",
-  }),
-  quantity: z
-    .number({
-      required_error: "Quantity is required",
-    })
-    .min(1, "Quantity must be at least 1"),
-});
-
-const posCustomerSchema = z.object({
-  name: z.string().min(1, "Customer name is required"),
-  email: z.string().email("Invalid email"),
-  phone: z.string().min(6, "Phone is required"),
-
-  address: z.string().optional(),
-  city: z.string().optional(),
-  zipCode: z.string().optional(),
-  notes: z.string().optional(),
-});
-
 export const createPOSOrderZodSchema = z.object({
   body: z.object({
-    products: z
-      .array(posProductSchema)
-      .min(1, "At least one product is required"),
+    items: z.array(
+      z.object({
+        product: z.object({
+          _id: z.string(),
+        }),
+        quantity: z.number().min(1),
+      })
+    ),
 
-    customer: posCustomerSchema,
+    subtotal: z.number(),
+    tax: z.number(),
+    deliveryFee: z.number(),
+    total: z.number(),
 
-    orderType: z.enum(["PICKUP", "DELIVERY"], {
-      required_error: "Order type is required",
-    }),
+    orderType: z.enum(["PICKUP", "DELIVERY"]),
+
+    customerName: z.string(),
+    customerEmail: z.string().email(),
+    customerPhone: z.string(),
+
+    customerAddress: z.string().optional(),
+    customerCity: z.string().optional(),
+    customerZipCode: z.string().optional(),
+    notes: z.string().optional(),
   }),
 });
 
