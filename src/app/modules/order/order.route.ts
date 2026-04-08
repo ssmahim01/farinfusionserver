@@ -12,7 +12,7 @@ router.post(
 
 router.get(
   "/my-orders",
-  checkAuth(...Object.values(Role)),
+  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN),
   OrderControllers.getMyOrders
 );
 

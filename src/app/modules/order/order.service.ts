@@ -214,12 +214,27 @@ const updateOrder = async (orderId: string, payload: any) => {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
 
-  // const prevStatus = existingOrder.orderStatus;
+  let subtotal = 0;
 
-  const updatedOrder = await Order.findByIdAndUpdate(orderId, payload, {
-    returnDocument: "after",
-    runValidators: true,
-  });
+  if (payload.products && payload.products.length > 0) {
+    subtotal = payload.products.reduce(
+      (sum: number, item: any) => sum + item.price * item.quantity,
+      0,
+    );
+  }
+
+  // const prevStatus = existingOrder.orderStatus;
+  const shippingCost = payload.shippingCost ?? existingOrder.shippingCost ?? 0;
+  const total = subtotal + shippingCost;
+
+  const updatedOrder = await Order.findByIdAndUpdate(
+    orderId,
+    { ...payload, total, subtotal },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    },
+  );
 
   if (!updatedOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order update failed");
@@ -228,65 +243,65 @@ const updateOrder = async (orderId: string, payload: any) => {
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
-const queryObj: any = {};
+  const queryObj: any = {};
 
-// DATE FILTER
-if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-  queryObj.createdAt = {};
+  // DATE FILTER
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    queryObj.createdAt = {};
 
-  if (query["createdAt[gte]"]) {
-    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    if (query["createdAt[gte]"]) {
+      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
   }
 
-  if (query["createdAt[lte]"]) {
-    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  // STATUS
+  if (query.orderStatus) {
+    queryObj.orderStatus = query.orderStatus;
   }
-}
 
-// STATUS
-if (query.orderStatus) {
-  queryObj.orderStatus = query.orderStatus;
-}
+  // REMOVE SPECIAL FIELDS
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
 
-// REMOVE SPECIAL FIELDS
-delete query["createdAt[gte]"];
-delete query["createdAt[lte]"];
-
-const queryBuilder = new QueryBuilder(
-  Order.find({
-    isDeleted: false,
-    ...queryObj,
-  }),
-  query
-);
-
-const stats = await Order.aggregate([
-  {
-    $match: {
+  const queryBuilder = new QueryBuilder(
+    Order.find({
       isDeleted: false,
-      ...queryObj, 
-    },
-  },
-  {
-    $group: {
-      _id: "$orderStatus",
-      count: { $sum: 1 },
-    },
-  },
-]);
+      ...queryObj,
+    }),
+    query,
+  );
 
-const formattedStats = {
-  total: 0,
-  PENDING: 0,
-  CONFIRMED: 0,
-  COMPLETED: 0,
-  CANCELLED: 0,
-};
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        ...queryObj,
+      },
+    },
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-stats.forEach((item) => {
-  formattedStats[item._id as keyof typeof formattedStats] = item.count;
-  formattedStats.total += item.count;
-});
+  const formattedStats = {
+    total: 0,
+    PENDING: 0,
+    CONFIRMED: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+  };
+
+  stats.forEach((item) => {
+    formattedStats[item._id as keyof typeof formattedStats] = item.count;
+    formattedStats.total += item.count;
+  });
 
   const ordersData = queryBuilder
     .filter()
@@ -323,96 +338,71 @@ const getAllTrashOrders = async (query: Record<string, string>) => {
 };
 
 const getMyOrders = async (userId: string, query: Record<string, string>) => {
-  let userObjectId: Types.ObjectId;
- const queryObj: any = {};
+  const queryObj: any = {};
 
-// DATE FILTER
-if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-  queryObj.createdAt = {};
+  // DATE FILTER
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    queryObj.createdAt = {};
 
-  if (query["createdAt[gte]"]) {
-    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    if (query["createdAt[gte]"]) {
+      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
   }
 
-  if (query["createdAt[lte]"]) {
-    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  if (query.orderStatus) {
+    queryObj.orderStatus = query.orderStatus;
   }
-}
 
-// STATUS
-if (query.orderStatus) {
-  queryObj.orderStatus = query.orderStatus;
-}
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
 
-// REMOVE SPECIAL FIELDS
-delete query["createdAt[gte]"];
-delete query["createdAt[lte]"];
+  const user = await User.findById(userId).select("role email");
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
-// APPLY TO QUERY
-const queryBuilder = new QueryBuilder(
-  Order.find({
-    isDeleted: false,
-    ...queryObj,
-  }),
-  query
-).search(orderSearchableFields)
+  let baseQuery;
+
+  if (user.role === Role.CUSTOMER) {
+    baseQuery = Order.find({
+      isDeleted: false,
+      "billingDetails.email": user.email,
+      ...queryObj,
+    });
+  } else if ([Role.MODERATOR, Role.MANAGER].includes(user.role)) {
+    baseQuery = Order.find({
+      isDeleted: false,
+      seller: userId,
+      ...queryObj,
+    });
+  } else if (user.role === Role.ADMIN) {
+    baseQuery = Order.find({
+      isDeleted: false,
+      ...queryObj,
+    });
+  } else {
+    throw new AppError(httpStatus.FORBIDDEN, "Access denied");
+  }
+
+  const queryBuilder = new QueryBuilder(baseQuery, query)
+    .search(orderSearchableFields)
     .filter()
     .sort()
     .fields()
     .paginate();
 
-  try {
-    userObjectId = new Types.ObjectId(userId);
-  } catch (err) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Invalid user ID");
-  }
-
-  // 1️⃣ Fetch user role
-  const user = await User.findById(userId).select("role email");
-  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
-
-  // 2️⃣ Build base query conditionally
-  let baseQuery;
-  if (user.role === Role.CUSTOMER) {
-    // Customer → search by email
-    baseQuery = Order.find({ "billingDetails.email": user.email });
-  } else if ([Role.MODERATOR, Role.MANAGER, Role.ADMIN].includes(user.role)) {
-    // Seller/Admin/Moderator → search by seller field
-    baseQuery = Order.find({ seller: userObjectId });
-  } else {
-    throw new AppError(httpStatus.FORBIDDEN, "Invalid role for order access");
-  }
-
-  
-    
-
-  // 4️⃣ Execute query + populate
   const orders = await queryBuilder
     .build()
-    .populate({
-      path: "payment",
-      select: "paymentMethod transactionId amount paymentStatus createdAt",
-    })
-    .populate({
-      path: "products.product",
-      select: "name price image description",
-    })
-    .populate({
-      path: "customer",
-      select: "name email _id role phone",
-    })
-    .populate({
-      path: "seller",
-      select: "name email _id role phone",
-    })
-    .exec();
+    .populate("customer", "name email _id role phone")
+    .populate("seller", "name email _id role phone")
+    .populate("payment")
+    .populate("products.product");
 
   const meta = await queryBuilder.getMeta();
 
-  return {
-    data: orders,
-    meta,
-  };
+  return { data: orders, meta };
 };
 
 export const OrderServices = {

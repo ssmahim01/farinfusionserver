@@ -26,8 +26,8 @@ export const createUserZodSchema = z.object({
     ,
     phone: z
         .string({ invalid_type_error: "Phone Number must be string" })
-        .regex(/^(?:\+64|0)[1-9]\d{7,9}$/, {
-            message: "Phone number must be valid for New Zealand. Format: +64XXXXXXXXX or 0XXXXXXXXX",
+        .regex(/^(?:\+880|0)[1-9]\d{7,9}$/, {
+            message: "Phone number must be valid for Bangladesh. Format: +88XXXXXXXXX or 0XXXXXXXXX",
         })
         .optional(),
     salary: z
