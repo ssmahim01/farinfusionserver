@@ -4,7 +4,7 @@ import { checkAuth } from "../../middlewares/checkAuth";
 import { Role } from "../user/user.interface";
 import { validateRequest } from "../../middlewares/validateRequest";
 import {
-  createPOSOrderZodSchema,
+//   createPOSOrderZodSchema,
   updatePOSOrderStatusZodSchema,
 } from "./pos.validation";
 
@@ -13,7 +13,7 @@ const router = express.Router();
 router.post(
   "/orders",
   checkAuth(Role.ADMIN, Role.MANAGER),
-  validateRequest(createPOSOrderZodSchema),
+//   validateRequest(createPOSOrderZodSchema),
   POSControllers.createPOSOrder
 );
 
