@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import httpStatus from 'http-status-codes';
 import { IUser, Role } from "./user.interface";
 import { User } from "./user.model";
@@ -7,9 +8,8 @@ import { envVars } from '../../config/env';
 import { JwtPayload } from 'jsonwebtoken';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { userSearchableFields } from './user.constants copy';
-import mongoose from 'mongoose';
 
-const createUserService = async (payload: Partial<IUser>, session?: mongoose.ClientSession) => {
+const createUserService = async (payload: Partial<IUser>) => {
     const { email, password, ...rest } = payload;
 
     const isExistUser = await User.findOne({ email })

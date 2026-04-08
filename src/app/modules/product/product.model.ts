@@ -112,7 +112,7 @@ const productSchema = new Schema<IProduct>(
 
 
 // slug generate (same as category)
-productSchema.pre("save", async function (next) {
+productSchema.pre("save", async function () {
     if (this.isModified("title")) {
         const baseSlug = this.title
             .toLowerCase()
@@ -131,7 +131,7 @@ productSchema.pre("save", async function (next) {
 });
 
 
-productSchema.pre("findOneAndUpdate", async function (next) {
+productSchema.pre("findOneAndUpdate", async function () {
     const product = this.getUpdate() as Partial<IProduct>;
 
     if (product.title) {

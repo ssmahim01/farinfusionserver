@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { NextFunction, Request, Response } from "express";
@@ -7,9 +9,10 @@ import { JwtPayload } from "jsonwebtoken";
 import { IUser } from "./user.interface";
 import { sendResponse } from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
+import {User} from "./user.model";
+import {CommonTrashService} from "../common/CommonTrashService";
 
 const createUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    console.log("User request ", req.body)
     const user = await UserServices.createUserService(req.body)
 
     sendResponse(res, {
@@ -128,7 +131,6 @@ const getAllTrashCustomers = catchAsync(async (req: Request, res: Response, next
 
 const updateProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const payload = req.body;
-    console.log(payload )
 
     if (req.file) {
         payload.picture = (req.file as any).path;
@@ -143,6 +145,42 @@ const updateProfile = catchAsync(async (req: Request, res: Response, next: NextF
     })
 })
 
+// update user trash
+const updateUserTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, User);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
+// update customer trash
+const updateCustomerTrash = catchAsync(
+    async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+
+        // @ts-expect-error
+        const Data = await CommonTrashService(id, User);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Trash Status Updated",
+            data: Data,
+        });
+    }
+);
+
+
+
 export const UserControllers = {
     createUser,
     getMe,
@@ -153,5 +191,7 @@ export const UserControllers = {
     getSingleUser,
     updateUser,
     deleteUser,
-    updateProfile
+    updateProfile,
+    updateUserTrash,
+    updateCustomerTrash,
 }

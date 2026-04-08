@@ -12,7 +12,7 @@ router.post(
     '/create-product', 
     checkAuth(Role.ADMIN),
     multerUpload.array('images', 3),
-    validateRequest(createProductZodSchema), 
+    validateRequest(createProductZodSchema),
     ProductControllers.createProduct
 )
 
@@ -28,4 +28,6 @@ router.patch(
     ProductControllers.updateProduct
 )
 
+// trash update
+router.post("/product-trash/:id", checkAuth(Role.ADMIN), ProductControllers.updateProductTrash)
 export const productRoutes = router;

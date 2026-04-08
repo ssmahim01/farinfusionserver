@@ -1,21 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import httpStatus from "http-status-codes"
+import httpStatus from "http-status-codes";
 import mongoose, { Types } from "mongoose";
-import {
-  IOrderProduct,
-  OrderStatus,
-  OrderType,
-} from "./order.interface";
+import { IOrderProduct, OrderStatus, OrderType } from "./order.interface";
 import { Counter, Order } from "./order.model";
 import { calculateOrderPrice } from "../../utils/calculateOrderTotal";
 import { Payment } from "../payment/payment.model";
-import {
-  PaymentMethod,
-  PaymentStatus,
-} from "../payment/payment.interface";
+import { PaymentMethod, PaymentStatus } from "../payment/payment.interface";
 import { Product } from "../product/product.model";
 import { User } from "../user/user.model";
 import AppError from "../../errorHelpers/appError";
@@ -27,9 +19,11 @@ import { CourierServices } from "../courier/courier.service";
 interface TCreateOrderPayload {
   orderType: OrderType;
   paymentMethod?: PaymentMethod;
+  total: number;
+  discount?: number;
   products: IOrderProduct[];
+  note: string;
   shippingCost?: number;
-
 
   billingDetails: {
     fullName?: string;
@@ -39,7 +33,7 @@ interface TCreateOrderPayload {
   };
   user?: string;
   seller?: string;
-};
+}
 
 const getTransactionId = () => {
   return `Tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -56,7 +50,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     /* ---------- ORDER ID GENERATOR ---------- */
 
     const getNextCustomOrderId = async (
-      session: mongoose.ClientSession
+      session: mongoose.ClientSession,
     ): Promise<number> => {
       let counter = await Counter.findById("orderId").session(session);
 
@@ -82,51 +76,46 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
     const calculatedOrder = await calculateOrderPrice(
       payload.products,
-      payload.shippingCost || 0
+      payload.shippingCost || 0,
     );
 
     /* ---------- ORDER DOC ---------- */
 
     const orderDoc: any = {
-      customOrderId: `ORD-${customOrderId}`, // ✅ nice format
+      customOrderId: `ORD-${customOrderId}`,
       orderType: payload.orderType,
 
       products: calculatedOrder.productsWithPrice,
 
       subtotal: calculatedOrder.subtotal,
       shippingCost: calculatedOrder.shippingCost,
-      total: calculatedOrder.totalPrice,
+      total: payload?.total,
+      discount: payload?.discount || 0,
 
       orderStatus: OrderStatus.PENDING,
     };
 
-    /* ---------- USER (OPTIONAL) ---------- */
-
-    const isUserExist = await User.findOne({ email: payload?.billingDetails?.email }).session(session);;
+    const isUserExist = await User.findOne({
+      email: payload?.billingDetails?.email,
+    }).session(session);
 
     if (isUserExist) {
       orderDoc.customer = isUserExist?._id;
     }
 
-
-    /* ---------- BILLING DETAILS ---------- */
-
     if (payload.billingDetails) {
       orderDoc.billingDetails = payload.billingDetails;
     }
 
-    /* ---------- POS ORDER ---------- */
-
     if (payload.orderType === OrderType.POS) {
+      if (!payload.seller) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Seller required");
+      }
       orderDoc.seller = payload.seller;
     }
 
-    /* ---------- CREATE ORDER ---------- */
-
     const [order] = await Order.create([orderDoc], { session });
     const orderId = order._id;
-
-    /* ---------- CREATE PAYMENT ---------- */
 
     const transactionId = getTransactionId();
 
@@ -145,29 +134,24 @@ const createOrder = async (payload: TCreateOrderPayload) => {
           paymentMethod: payload.paymentMethod,
         },
       ],
-      { session }
+      { session },
     );
-
-    /* ---------- UPDATE ORDER WITH PAYMENT ---------- */
 
     updatedOrder = await Order.findByIdAndUpdate(
       orderId,
+
       {
         payment: payment._id,
         transactionId,
 
-        orderStatus:
-          payload.paymentMethod === PaymentMethod.COD
-            ? OrderStatus.CONFIRMED
-            : OrderStatus.PENDING,
+        orderStatus: OrderStatus.PENDING,
+        note: payload.note || "Auto generated order",
       },
-      { returnDocument: "after", session }
+      { returnDocument: "after", session },
     )
       .populate("customer", "name email _id role phone")
       .populate("seller", "name email _id role phone")
       .populate("products.product");
-
-    /* ---------- UPDATE PRODUCT SALES ---------- */
 
     await Promise.all(
       payload.products.map(async (p) => {
@@ -175,17 +159,14 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
         if (product) {
           product.totalSold = (product.totalSold || 0) + p.quantity;
-            product.availableStock = (product.availableStock ?? 0) - p.quantity;
+          product.availableStock = (product.availableStock ?? 0) - p.quantity;
           await product.save({ session });
         }
-      })
+      }),
     );
-
-    /* ---------- COMMIT ---------- */
 
     await session.commitTransaction();
     session.endSession();
-
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -205,10 +186,11 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 };
 
 const getSingleOrder = async (id: string) => {
-  const order = await Order.findById(id).populate("customer", "name email _id role phone")
-    .populate("seller", "name email _id role phone").
-    populate("payment").
-    populate("products.product");
+  const order = await Order.findById(id)
+    .populate("customer", "name email _id role phone")
+    .populate("seller", "name email _id role phone")
+    .populate("payment")
+    .populate("products.product");
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
@@ -225,66 +207,131 @@ const deleteOrder = async (id: string) => {
   return { data: null };
 };
 
-const updateOrder = async (orderId: string, payload: Partial<any>) => {
+const updateOrder = async (orderId: string, payload: any) => {
   const existingOrder = await Order.findById(orderId);
 
   if (!existingOrder) {
-    throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
 
-  const prevStatus = existingOrder.orderStatus;
+  // const prevStatus = existingOrder.orderStatus;
 
   const updatedOrder = await Order.findByIdAndUpdate(orderId, payload, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   });
 
-  if (
-    prevStatus !== OrderStatus.CONFIRMED &&
-    payload.orderStatus === OrderStatus.CONFIRMED
-  ) {
-    try {
-      await CourierServices.createCourier(orderId);
-    } catch (err) {
-      console.error("Courier trigger failed:", err);
-    }
+  if (!updatedOrder) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order update failed");
   }
-
   return updatedOrder;
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Order.find({ isDeleted: false }), query);
-  const ordersData = queryBuilder.filter().search(orderSearchableFields).sort().fields().paginate().build()
+const queryObj: any = {};
+
+// DATE FILTER
+if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  queryObj.createdAt = {};
+
+  if (query["createdAt[gte]"]) {
+    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  }
+
+  if (query["createdAt[lte]"]) {
+    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  }
+}
+
+// STATUS
+if (query.orderStatus) {
+  queryObj.orderStatus = query.orderStatus;
+}
+
+// REMOVE SPECIAL FIELDS
+delete query["createdAt[gte]"];
+delete query["createdAt[lte]"];
+
+const queryBuilder = new QueryBuilder(
+  Order.find({
+    isDeleted: false,
+    ...queryObj,
+  }),
+  query
+);
+
+  const ordersData = queryBuilder
+    .filter()
+    .search(orderSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");;
+    .populate("products.product");
 
-  const [data, meta] = await Promise.all([
-    ordersData,
-    queryBuilder.getMeta(),
-  ]);
+  const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
   return { data, meta };
 };
 
 const getAllTrashOrders = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(Order.find({ isDeleted: true }), query);
-  const ordersData = queryBuilder.filter().search(orderSearchableFields).sort().fields().paginate().build()
+  const ordersData = queryBuilder
+    .filter()
+    .search(orderSearchableFields)
+    .sort()
+    .fields()
+    .paginate()
+    .build()
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");;
+    .populate("products.product");
 
-  const [data, meta] = await Promise.all([
-    ordersData,
-    queryBuilder.getMeta(),
-  ]);
+  const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
   return { data, meta };
 };
 
 const getMyOrders = async (userId: string, query: Record<string, string>) => {
   let userObjectId: Types.ObjectId;
+ const queryObj: any = {};
+
+// DATE FILTER
+if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  queryObj.createdAt = {};
+
+  if (query["createdAt[gte]"]) {
+    queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  }
+
+  if (query["createdAt[lte]"]) {
+    queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  }
+}
+
+// STATUS
+if (query.orderStatus) {
+  queryObj.orderStatus = query.orderStatus;
+}
+
+// REMOVE SPECIAL FIELDS
+delete query["createdAt[gte]"];
+delete query["createdAt[lte]"];
+
+// APPLY TO QUERY
+const queryBuilder = new QueryBuilder(
+  Order.find({
+    isDeleted: false,
+    ...queryObj,
+  }),
+  query
+).search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate();
 
   try {
     userObjectId = new Types.ObjectId(userId);
@@ -308,13 +355,8 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     throw new AppError(httpStatus.FORBIDDEN, "Invalid role for order access");
   }
 
-  // 3️⃣ Initialize query builder
-  const queryBuilder = new QueryBuilder(baseQuery, query)
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate();
+  
+    
 
   // 4️⃣ Execute query + populate
   const orders = await queryBuilder
@@ -337,7 +379,6 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     })
     .exec();
 
-  // 5️⃣ Get meta (pagination info)
   const meta = await queryBuilder.getMeta();
 
   return {
@@ -346,7 +387,6 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   };
 };
 
-
 export const OrderServices = {
   createOrder,
   getSingleOrder,
@@ -354,5 +394,5 @@ export const OrderServices = {
   getAllTrashOrders,
   updateOrder,
   deleteOrder,
-  getMyOrders
+  getMyOrders,
 };

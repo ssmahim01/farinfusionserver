@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
@@ -9,7 +9,6 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
 
   const createdOrder = await OrderServices.createOrder(payload);
 
-    console.log({createOrder})
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -19,10 +18,8 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/* ---------- GET MY ORDERS ---------- */
-
 const getMyOrders = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const userId = req.user?.userId;
     const query = req.query as Record<string, string>;
 
@@ -38,10 +35,8 @@ const getMyOrders = catchAsync(
   }
 );
 
-/* ---------- GET ALL ORDERS (ADMIN) ---------- */
-
 const getAllOrders = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const query = req.query as Record<string, string>;
 
     const result = await OrderServices.getAllOrders(query);
@@ -57,7 +52,7 @@ const getAllOrders = catchAsync(
 );
 
 const getAllTrashOrders = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const query = req.query as Record<string, string>;
 
     const result = await OrderServices.getAllTrashOrders(query);
@@ -71,10 +66,9 @@ const getAllTrashOrders = catchAsync(
     });
   }
 );
-/* ---------- GET SINGLE ORDER ---------- */
 
 const getSingleOrder = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
 
     const result = await OrderServices.getSingleOrder(orderId);
@@ -88,10 +82,8 @@ const getSingleOrder = catchAsync(
   }
 );
 
-/* ---------- UPDATE ORDER ---------- */
-
 const updateOrder = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
     const payload = req.body;
 
@@ -108,11 +100,27 @@ const updateOrder = catchAsync(
     });
   }
 );
+const updateCompleteOrder = catchAsync(
+  async (req: Request, res: Response) => {
+    const orderId = req.params.id as string;
+    const payload = req.body;
 
-/* ---------- DELETE ORDER ---------- */
+    const result = await OrderServices.updateOrder(
+      orderId,
+      payload
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Order status changed to completed",
+      data: result,
+    });
+  }
+);
 
 const deleteOrder = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
 
     const result = await OrderServices.deleteOrder(orderId);
@@ -133,5 +141,6 @@ export const OrderControllers = {
   getAllTrashOrders,
   getSingleOrder,
   updateOrder,
+  updateCompleteOrder,
   deleteOrder,
 };

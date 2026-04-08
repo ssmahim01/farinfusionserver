@@ -35,13 +35,18 @@ export const createUserZodSchema = z.object({
         .number({ invalid_type_error: "Salary must be a number" })
         .min(0, { message: "Salary cannot be negative" })
         .optional(),
+    commissionSalary: z
+        .coerce
+        .number({ invalid_type_error: "Salary must be a number" })
+        .min(0, { message: "Salary cannot be negative" })
+        .optional(),
     address: z
         .string({ invalid_type_error: "Address must be string" })
         .min(2, { message: "Address must be at least 2 characters long." })
         .max(100, { message: "Address cannot exceed 100 characters." }),
     role: z
-        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR], {
-            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, or MODERATOR",
+        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS], {
+            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS or MODERATOR",
         })
         .optional(),
 })
@@ -57,9 +62,11 @@ export const updateUserZodSchema = z.object({
             message: "Phone number must be valid for New Zealand. Format: +64XXXXXXXXX or 0XXXXXXXXX",
         })
         .optional(),
-    role: z.enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR], {
-        invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, or MODERATOR",
-    }).optional(),
+    role: z
+        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS], {
+            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS or MODERATOR",
+        })
+        .optional(),
     isActive: z
         .enum(Object.values(IsActive) as [string])
         .optional(),
@@ -77,6 +84,11 @@ export const updateUserZodSchema = z.object({
         .string({ invalid_type_error: "Picture must be string" })
         .optional(),
     salary: z
+        .coerce
+        .number({ invalid_type_error: "Salary must be a number" })
+        .min(0, { message: "Salary cannot be negative" })
+        .optional(),
+    commissionSalary: z
         .coerce
         .number({ invalid_type_error: "Salary must be a number" })
         .min(0, { message: "Salary cannot be negative" })

@@ -63,50 +63,131 @@ const deleteBrand = async (id: string) => {
     return { data: null };
 };
 
+// const getAllBrands = async (query: Record<string, string>) => {
+//     const queryBuilder = new QueryBuilder(
+//         Brand.find({ isDeleted: false }).sort({ createdAt: -1 }),
+//         query
+//     );
+//     const brandsData = queryBuilder
+//         .filter()
+//         .search(brandSearchableFields)
+//         .sort()
+//         .fields()
+//         .paginate();
+//
+//     const [data, meta] = await Promise.all([
+//         brandsData.build(),
+//         queryBuilder.getMeta()
+//     ])
+//
+//     return {
+//         data,
+//         meta
+//     }
+// };
+
 const getAllBrands = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
         Brand.find({ isDeleted: false }).sort({ createdAt: -1 }),
         query
     );
-    const brandsData = queryBuilder
+
+    const brandsQuery = queryBuilder
         .filter()
         .search(brandSearchableFields)
         .sort()
         .fields()
-        .paginate();
+        .paginate()
+        .build()
+        .populate({
+            path: "products",
+            match: { isDeleted: false },
+            select: "_id",
+        });
 
-    const [data, meta] = await Promise.all([
-        brandsData.build(),
+    const [brands, meta] = await Promise.all([
+        brandsQuery,
         queryBuilder.getMeta()
-    ])
+    ]);
+
+    const data = brands.map((brand: any) => {
+        const obj = brand.toObject();
+
+        return {
+            ...obj,
+            productCount: obj.products?.length || 0,
+            products: undefined, // optional: products hide করতে
+        };
+    });
 
     return {
         data,
         meta
-    }
+    };
 };
 
+
+// const getAllTrashBrands = async (query: Record<string, string>) => {
+//     const queryBuilder = new QueryBuilder(
+//         Brand.find({ isDeleted: true }).sort({ createdAt: -1 }),
+//         query
+//     );
+//     const brandsData = queryBuilder
+//         .filter()
+//         .search(brandSearchableFields)
+//         .sort()
+//         .fields()
+//         .paginate();
+//
+//     const [data, meta] = await Promise.all([
+//         brandsData.build(),
+//         queryBuilder.getMeta()
+//     ])
+//
+//     return {
+//         data,
+//         meta
+//     }
+// };
 const getAllTrashBrands = async (query: Record<string, string>) => {
     const queryBuilder = new QueryBuilder(
         Brand.find({ isDeleted: true }).sort({ createdAt: -1 }),
         query
     );
-    const brandsData = queryBuilder
+
+    const brandsQuery = queryBuilder
         .filter()
         .search(brandSearchableFields)
         .sort()
         .fields()
-        .paginate();
+        .paginate()
+        .build()
+        .populate({
+            path: "products",
+            match: { isDeleted: false },
+            select: "_id",
+        });
 
-    const [data, meta] = await Promise.all([
-        brandsData.build(),
+    const [brands, meta] = await Promise.all([
+        brandsQuery,
         queryBuilder.getMeta()
-    ])
+    ]);
+
+    // maping data
+    const data = brands.map((brand: any) => {
+        const obj = brand.toObject();
+
+        return {
+            ...obj,
+            productCount: obj.products?.length || 0,
+            products: undefined, // hide products
+        };
+    });
 
     return {
         data,
         meta
-    }
+    };
 };
 
 export const BrandServices = {
