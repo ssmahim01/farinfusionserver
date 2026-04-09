@@ -89,7 +89,6 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await OrderServices.updateOrderStatus(
     orderId as string,
     orderStatus,
-    courierName
   );
 
   sendResponse(res, {

@@ -207,11 +207,7 @@ const deleteOrder = async (id: string) => {
   return { data: null };
 };
 
-const updateOrderStatus = async (
-  orderId: string,
-  status: string,
-  courierName?: string
-) => {
+const updateOrderStatus = async (orderId: string, status: string) => {
   const existingOrder = await Order.findById(orderId);
 
   if (!existingOrder) {
@@ -224,28 +220,16 @@ const updateOrderStatus = async (
     orderStatus: status,
   };
 
-  // optional courier
-  if (courierName) {
-    updateData.courierName = courierName;
-  }
-
-  const updatedOrder = await Order.findByIdAndUpdate(
-    orderId,
-    updateData,
-    {
-      returnDocument: "after",
-      runValidators: true,
-    }
-  );
+  const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData, {
+    returnDocument: "after",
+    runValidators: true,
+  });
 
   if (!updatedOrder) {
     throw new AppError(httpStatus.BAD_REQUEST, "Failed to update order status");
   }
 
-  if (
-    prevStatus !== "CONFIRMED" &&
-    status === "CONFIRMED"
-  ) {
+  if (prevStatus !== "CONFIRMED" && status === "CONFIRMED") {
     await CourierServices.createCourier(orderId);
   }
 
