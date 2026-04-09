@@ -1,0 +1,13 @@
+export const DASHBOARD_ROLES = {
+  ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+  MODERATOR: "MODERATOR",
+  CUSTOMER: "CUSTOMER",
+} as const;
+
+export const ORDER_STATUSES = [
+  "PENDING",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+] as const;

@@ -8,6 +8,7 @@ import { leadRoutes } from "../modules/lead/lead.route";
 import { orderRoutes } from "../modules/order/order.route";
 import { courierRoutes } from "../modules/courier/courier.route";
 import { posRoutes } from "../modules/pos/pos.route";
+import { dashboardRoutes } from "../modules/dashboard/dashboard.route";
 
 export const router = Router();
 
@@ -47,6 +48,10 @@ const moduleRoutes = [
   {
     path: "/pos",
     route: posRoutes,
+  },
+  {
+    path: "/dashboard",
+    route: dashboardRoutes,
   },
 ];
 
