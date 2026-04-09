@@ -13,6 +13,7 @@ export const Counter = model("Counter", counterSchema);
 // Order Schema 
 const orderSchema = new Schema<IOrder>(
   {
+    _id: Schema.Types.ObjectId,
 
     customOrderId: {
       type: String,

@@ -12,13 +12,13 @@ router.post(
 
 router.get(
   "/my-orders",
-  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN),
+  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN, Role.TELLICELSS),
   OrderControllers.getMyOrders
 );
 
 router.get(
   "/",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.getAllOrders
 );
 
@@ -39,6 +39,13 @@ router.patch(
   checkAuth(...Object.values(Role)),
   OrderControllers.updateOrder
 );
+
+router.patch(
+  "/:id/confirm-status",
+  checkAuth(...Object.values(Role)),
+  OrderControllers.updateOrderStatus
+);
+
 router.patch(
   "/:id/status",
   checkAuth(...Object.values(Role)),

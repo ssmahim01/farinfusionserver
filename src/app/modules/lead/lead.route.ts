@@ -16,7 +16,7 @@ router.post(
     LeadControllers.createLead
 )
 
-router.get("/all-leads", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR), LeadControllers.getAllLeads)
+router.get("/all-leads", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.getAllLeads)
 router.get("/all-trash-leads", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR), LeadControllers.getAllTrashLeads)
 router.get("/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR), LeadControllers.getSingleLead)
 router.delete("/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR), LeadControllers.deleteLead)

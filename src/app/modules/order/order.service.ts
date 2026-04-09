@@ -207,6 +207,51 @@ const deleteOrder = async (id: string) => {
   return { data: null };
 };
 
+const updateOrderStatus = async (
+  orderId: string,
+  status: string,
+  courierName?: string
+) => {
+  const existingOrder = await Order.findById(orderId);
+
+  if (!existingOrder) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
+
+  const prevStatus = existingOrder.orderStatus;
+
+  const updateData: any = {
+    orderStatus: status,
+  };
+
+  // optional courier
+  if (courierName) {
+    updateData.courierName = courierName;
+  }
+
+  const updatedOrder = await Order.findByIdAndUpdate(
+    orderId,
+    updateData,
+    {
+      returnDocument: "after",
+      runValidators: true,
+    }
+  );
+
+  if (!updatedOrder) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Failed to update order status");
+  }
+
+  if (
+    prevStatus !== "CONFIRMED" &&
+    status === "CONFIRMED"
+  ) {
+    await CourierServices.createCourier(orderId);
+  }
+
+  return updatedOrder;
+};
+
 const updateOrder = async (orderId: string, payload: any) => {
   const existingOrder = await Order.findById(orderId);
 
@@ -411,6 +456,7 @@ export const OrderServices = {
   getAllOrders,
   getAllTrashOrders,
   updateOrder,
+  updateOrderStatus,
   deleteOrder,
   getMyOrders,
 };
