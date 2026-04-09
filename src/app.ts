@@ -16,6 +16,7 @@ app.use(express.urlencoded({extended: true}))
 app.use(cors({
      origin: [
         envVars.FRONTEND_URL,
+        "https://farinfusion.com",
         "http://localhost:3000",
     ],
     credentials: true
