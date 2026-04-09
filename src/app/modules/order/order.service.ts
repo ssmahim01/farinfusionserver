@@ -225,7 +225,7 @@ const updateOrder = async (orderId: string, payload: any) => {
 
   // const prevStatus = existingOrder.orderStatus;
   const shippingCost = payload.shippingCost ?? existingOrder.shippingCost ?? 0;
-  const total = subtotal + shippingCost;
+  const total = subtotal + shippingCost - payload.discount;
 
   const updatedOrder = await Order.findByIdAndUpdate(
     orderId,
