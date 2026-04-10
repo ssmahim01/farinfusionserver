@@ -229,10 +229,6 @@ const updateOrderStatus = async (orderId: string, status: string) => {
     throw new AppError(httpStatus.BAD_REQUEST, "Failed to update order status");
   }
 
-  if (prevStatus !== "CONFIRMED" && status === "CONFIRMED") {
-    await CourierServices.createCourier(orderId);
-  }
-
   return updatedOrder;
 };
 

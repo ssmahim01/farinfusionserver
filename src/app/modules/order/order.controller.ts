@@ -7,7 +7,7 @@ import { OrderServices } from "./order.service";
 const createOrder = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
 
-  const createdOrder = await OrderServices.createOrder(payload);
+  const createdOrder: any = await OrderServices.createOrder(payload);
 
 
   sendResponse(res, {
@@ -84,7 +84,7 @@ const getSingleOrder = catchAsync(
 
 const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id;
-  const { orderStatus, courierName } = req.body;
+  const { orderStatus } = req.body;
 
   const result = await OrderServices.updateOrderStatus(
     orderId as string,
