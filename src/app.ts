@@ -9,6 +9,7 @@ import notFound from "./app/middlewares/notFound";
 import { envVars } from "./app/config/env";
 // import { envVars } from "./app/config/env"
 
+
 const app = express()
 app.use(cookieParser());
 app.set("trust proxy", 1)
