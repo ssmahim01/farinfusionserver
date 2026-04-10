@@ -42,13 +42,13 @@ router.patch(
 
 router.patch(
   "/:id/confirm-status",
-  checkAuth(...Object.values(Role)),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.updateOrderStatus
 );
 
 router.patch(
   "/:id/status",
-  checkAuth(...Object.values(Role)),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.updateCompleteOrder
 );
 

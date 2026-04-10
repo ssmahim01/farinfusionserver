@@ -14,7 +14,6 @@ import AppError from "../../errorHelpers/appError";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { orderSearchableFields } from "./order.constants";
 import { Role } from "../user/user.interface";
-import { CourierServices } from "../courier/courier.service";
 
 interface TCreateOrderPayload {
   orderType: OrderType;
@@ -47,8 +46,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
   try {
     session.startTransaction();
 
-    /* ---------- ORDER ID GENERATOR ---------- */
-
     const getNextCustomOrderId = async (
       session: mongoose.ClientSession,
     ): Promise<number> => {
@@ -72,28 +69,64 @@ const createOrder = async (payload: TCreateOrderPayload) => {
 
     const customOrderId = await getNextCustomOrderId(session);
 
-    /* ---------- CALCULATE ORDER PRICE ---------- */
+    const sanitizedProducts = payload.products.map((p: any) => {
+      if (!p.product) {
+        throw new AppError(400, "Invalid product");
+      }
+
+      let productId;
+
+      if (typeof p.product === "string") {
+        productId = p.product;
+      } else if (p.product?._id) {
+        productId = p.product._id;
+      } else {
+        throw new AppError(400, "Invalid product format");
+      }
+
+      return {
+        product: new Types.ObjectId(productId),
+        quantity: Number(p.quantity) || 1,
+        selectedExtras: p.selectedExtras || [],
+      };
+    });
 
     const calculatedOrder = await calculateOrderPrice(
-      payload.products,
+      sanitizedProducts as unknown as IOrderProduct[],
       payload.shippingCost || 0,
     );
-
-    /* ---------- ORDER DOC ---------- */
 
     const orderDoc: any = {
       customOrderId: `ORD-${customOrderId}`,
       orderType: payload.orderType,
 
-      products: calculatedOrder.productsWithPrice,
+      products: calculatedOrder.productsWithPrice.map((p: any) => {
+        let productId;
+
+        if (typeof p.product === "string") {
+          productId = p.product;
+        } else if (p.product?._id) {
+          productId = p.product._id;
+        } else {
+          throw new Error("Invalid product in calculatedOrder");
+        }
+
+        return {
+          product: new Types.ObjectId(productId),
+          quantity: Number(p.quantity) || 1,
+          price: Number(p.price) || 0,
+        };
+      }),
 
       subtotal: calculatedOrder.subtotal,
       shippingCost: calculatedOrder.shippingCost,
-      total: payload?.total,
+      total: payload?.total || calculatedOrder.totalPrice,
       discount: payload?.discount || 0,
 
       orderStatus: OrderStatus.PENDING,
     };
+
+    // console.log("ORDER PRODUCTS:", JSON.stringify(orderDoc.products, null, 2));
 
     const isUserExist = await User.findOne({
       email: payload?.billingDetails?.email,
@@ -114,8 +147,10 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderDoc.seller = payload.seller;
     }
 
-    const [order] = await Order.create([orderDoc], { session });
-    const orderId = order._id;
+    const order = new Order(orderDoc);
+    await order.save({ session });
+
+    const orderId = order?._id;
 
     const transactionId = getTransactionId();
 
@@ -154,12 +189,12 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       .populate("products.product");
 
     await Promise.all(
-      payload.products.map(async (p) => {
+      sanitizedProducts.map(async (p) => {
         const product = await Product.findById(p.product).session(session);
 
         if (product) {
           product.totalSold = (product.totalSold || 0) + p.quantity;
-          product.availableStock = (product.availableStock ?? 0) - p.quantity;
+          product.availableStock = (product.availableStock || 0) - p.quantity;
           await product.save({ session });
         }
       }),
@@ -175,8 +210,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     session.endSession();
     throw error;
   }
-
-  /* ---------- OUTSIDE TRANSACTION ---------- */
 
   // (future use: invoice, email, notification etc.)
 

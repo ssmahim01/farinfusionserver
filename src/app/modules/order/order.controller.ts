@@ -7,7 +7,7 @@ import { OrderServices } from "./order.service";
 const createOrder = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
 
-  const createdOrder: any = await OrderServices.createOrder(payload);
+  const createdOrder = await OrderServices.createOrder(payload);
 
 
   sendResponse(res, {

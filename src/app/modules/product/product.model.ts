@@ -27,7 +27,6 @@ const reviewSchema = new Schema(
 
 const productSchema = new Schema<IProduct>(
     {
-        // Basic Info
         title: {
             type: String,
             required: true,
