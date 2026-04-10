@@ -9,6 +9,10 @@ import notFound from "./app/middlewares/notFound";
 import { envVars } from "./app/config/env";
 // import { envVars } from "./app/config/env"
 
+// added dns
+import dns from "dns"
+dns.setServers(["1.1.1.1", "8.8.8.8"])
+
 const app = express()
 app.use(cookieParser());
 app.set("trust proxy", 1)

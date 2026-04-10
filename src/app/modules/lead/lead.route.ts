@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post(
     '/create-lead', 
-    checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
     validateRequest(createLeadZodSchema), 
     LeadControllers.createLead
 )
