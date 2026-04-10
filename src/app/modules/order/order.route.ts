@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post(
   "/",
+  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN, Role.TELLICELSS),
   OrderControllers.createOrder
 );
 
@@ -18,7 +19,7 @@ router.get(
 
 router.get(
   "/",
-  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
   OrderControllers.getAllOrders
 );
 
