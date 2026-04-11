@@ -155,6 +155,7 @@ const getAllTrashBrands = async (query: Record<string, string>) => {
         query
     );
 
+
     const brandsQuery = queryBuilder
         .filter()
         .search(brandSearchableFields)

@@ -29,12 +29,12 @@ router.get(
 );
 router.get(
   "/all-customers",
-  checkAuth(Role.ADMIN),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   UserControllers.getAllCustomers,
 );
 router.get(
   "/all-trash-customers",
-  checkAuth(Role.ADMIN),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   UserControllers.getAllTrashCustomers,
 );
 router.get(
@@ -52,6 +52,6 @@ router.patch(
 router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser);
 
 router.post("/user-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateUserTrash);
-router.post("/customer-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateCustomerTrash);
+router.post("/customer-trash/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS), UserControllers.updateCustomerTrash);
 
 export const userRoutes = router;
