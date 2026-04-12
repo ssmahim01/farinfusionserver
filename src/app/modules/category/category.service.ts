@@ -8,20 +8,6 @@ import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import mongoose from "mongoose";
 
 
-// const createCategoryService = async (payload: Partial<ICategory>) => {
-//   const newOrder = Number(payload.showOrder) || 1;
-
-//   // shift existing categories
-//   await Category.updateMany(
-//     { showOrder: { $gte: newOrder } },
-//     { $inc: { showOrder: 1 } }
-//   );
-
-//   payload.showOrder = newOrder;
-
-//   const category = await Category.create(payload);
-//   return category;
-// };
 
 const createCategoryService = async (payload: Partial<ICategory>) => {
   const newOrder = Number(payload.showOrder) || 1;
@@ -46,72 +32,6 @@ const createCategoryService = async (payload: Partial<ICategory>) => {
   return category;
 };
 
-// const updateCategory = async (
-//   categoryId: string,
-//   payload: Partial<ICategory>
-// ) => {
-
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-
-//     const existingCategory = await Category.findById(categoryId).session(session);
-
-//     if (!existingCategory) {
-//       throw new AppError(httpStatus.NOT_FOUND, "Category not found");
-//     }
-
-//     const oldOrder = existingCategory.showOrder;
-//     const newOrder = Number(payload.showOrder);
-
-//     if (newOrder && newOrder !== oldOrder) {
-
-//       // temporarily move current category
-//       await Category.findByIdAndUpdate(
-//         categoryId,
-//         { showOrder: -1 },
-//         { session }
-//       );
-
-//       if (newOrder < oldOrder) {
-//         await Category.updateMany(
-//           {
-//             showOrder: { $gte: newOrder, $lt: oldOrder },
-//           },
-//           { $inc: { showOrder: 1 } },
-//           { session }
-//         );
-//       } else {
-//         await Category.updateMany(
-//           {
-//             showOrder: { $gt: oldOrder, $lte: newOrder },
-//           },
-//           { $inc: { showOrder: -1 } },
-//           { session }
-//         );
-//       }
-
-//       payload.showOrder = newOrder;
-//     }
-
-//     const updatedCategory = await Category.findByIdAndUpdate(
-//       categoryId,
-//       payload,
-//       { new: true, runValidators: true, session }
-//     );
-
-//     await session.commitTransaction();
-//     session.endSession();
-
-//     return updatedCategory;
-
-//   } catch (error) {
-//     await session.abortTransaction();
-//     session.endSession();
-//     throw error;
-//   }
-// };
 
 const updateCategory = async (
   categoryId: string,
@@ -217,32 +137,28 @@ const deleteCategory = async (id: string) => {
     return { data: null };
 };
 
-// const getAllCategories = async (query: Record<string, string>) => {
-//     const queryBuilder = new QueryBuilder(
-//         Category.find({isDeleted: false}).sort({ showOrder: 1 }),
-//         query
-//     );
-//     const categoriesData = queryBuilder
-//         .filter()
-//         .search(categorySearchableFields)
-//         .sort()
-//         .fields()
-//         .paginate();
-//
-//     const [data, meta] = await Promise.all([
-//         categoriesData.build(),
-//         queryBuilder.getMeta()
-//     ])
-//
-//     return {
-//         data,
-//         meta
-//     }
-// };
-
 const getAllCategories = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
     const queryBuilder = new QueryBuilder(
-        Category.find({ isDeleted: false }).sort({ showOrder: -1 }),
+        Category.find({ isDeleted: false, ...queryObj }).sort({ showOrder: -1 }),
         query
     );
 
@@ -305,8 +221,28 @@ const getAllCategories = async (query: Record<string, string>) => {
 // };
 
 const getAllTrashCategories = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
+
     const queryBuilder = new QueryBuilder(
-        Category.find({ isDeleted: true }).sort({ showOrder: 1 }),
+        Category.find({ isDeleted: true, ...queryObj }).sort({ showOrder: 1 }),
         query
     );
 
