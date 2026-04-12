@@ -72,8 +72,27 @@ const deleteLead = async (id: string) => {
 
 
 const getAllLeads = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
     const queryBuilder = new QueryBuilder(
-        Lead.find({isDeleted: false}).populate("assignedBy", "name email role").sort({ createdAt: -1 }),
+        Lead.find({isDeleted: false, ...queryObj}).populate("assignedBy", "name email role").sort({ createdAt: -1 }),
         query
     );
     const leadsData = queryBuilder
@@ -95,8 +114,27 @@ const getAllLeads = async (query: Record<string, string>) => {
 };
 
 const getAllTrashLeads = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
     const queryBuilder = new QueryBuilder(
-        Lead.find({isDeleted: true}).sort({ createdAt: -1 }),
+        Lead.find({isDeleted: true, ...queryObj}).sort({ createdAt: -1 }),
         query
     );
     const leadsData = queryBuilder

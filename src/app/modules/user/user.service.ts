@@ -93,9 +93,29 @@ const getMyCustomers = async (
   userId: string,
   query: Record<string, string>
 ) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
   const orders = await Order.find({
     seller: userId,
     isDeleted: false,
+      ... queryObj,
   })
     .populate("customer", "name email phone address")
     .select("customer billingDetails");
@@ -141,9 +161,27 @@ const deleteUser = async (id: string) => {
 };
 
 const getAllUsers = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
 
     const queryBuilder = new QueryBuilder(
-        User.find({ role: { $ne: "CUSTOMER" }, isDeleted: false }),
+        User.find({ role: { $ne: "CUSTOMER" }, isDeleted: false, ...queryObj }),
         query
     );
     const usersData = queryBuilder
@@ -164,9 +202,27 @@ const getAllUsers = async (query: Record<string, string>) => {
     }
 };
 const getAllTrashUsers = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
 
     const queryBuilder = new QueryBuilder(
-        User.find({ role: { $ne: "CUSTOMER" }, isDeleted: true }),
+        User.find({ role: { $ne: "CUSTOMER" }, isDeleted: true, ...queryObj }),
         query
     );
     const usersData = queryBuilder
@@ -188,9 +244,27 @@ const getAllTrashUsers = async (query: Record<string, string>) => {
 };
 
 const getAllCustomers = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
 
     const queryBuilder = new QueryBuilder(
-        User.find({ role: "CUSTOMER", isDeleted: false }),
+        User.find({ role: "CUSTOMER", isDeleted: false, ...queryObj }),
         query
     );
 
@@ -213,9 +287,27 @@ const getAllCustomers = async (query: Record<string, string>) => {
 };
 
 const getAllTrashCustomers = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
 
     const queryBuilder = new QueryBuilder(
-        User.find({ role: "CUSTOMER", isDeleted: true }),
+        User.find({ role: "CUSTOMER", isDeleted: true, ...queryObj }),
         query
     );
 
