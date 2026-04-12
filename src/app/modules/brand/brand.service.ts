@@ -63,32 +63,29 @@ const deleteBrand = async (id: string) => {
     return { data: null };
 };
 
-// const getAllBrands = async (query: Record<string, string>) => {
-//     const queryBuilder = new QueryBuilder(
-//         Brand.find({ isDeleted: false }).sort({ createdAt: -1 }),
-//         query
-//     );
-//     const brandsData = queryBuilder
-//         .filter()
-//         .search(brandSearchableFields)
-//         .sort()
-//         .fields()
-//         .paginate();
-//
-//     const [data, meta] = await Promise.all([
-//         brandsData.build(),
-//         queryBuilder.getMeta()
-//     ])
-//
-//     return {
-//         data,
-//         meta
-//     }
-// };
 
 const getAllBrands = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
     const queryBuilder = new QueryBuilder(
-        Brand.find({ isDeleted: false }).sort({ createdAt: -1 }),
+        Brand.find({ isDeleted: false, ...queryObj }).sort({ createdAt: -1 }),
         query
     );
 
@@ -116,44 +113,39 @@ const getAllBrands = async (query: Record<string, string>) => {
         return {
             ...obj,
             productCount: obj.products?.length || 0,
-            products: undefined, // optional: products hide করতে
+            products: undefined,
         };
     });
 
-    return {
-        data,
-        meta
-    };
+    return { data, meta };
 };
 
 
-// const getAllTrashBrands = async (query: Record<string, string>) => {
-//     const queryBuilder = new QueryBuilder(
-//         Brand.find({ isDeleted: true }).sort({ createdAt: -1 }),
-//         query
-//     );
-//     const brandsData = queryBuilder
-//         .filter()
-//         .search(brandSearchableFields)
-//         .sort()
-//         .fields()
-//         .paginate();
-//
-//     const [data, meta] = await Promise.all([
-//         brandsData.build(),
-//         queryBuilder.getMeta()
-//     ])
-//
-//     return {
-//         data,
-//         meta
-//     }
-// };
 const getAllTrashBrands = async (query: Record<string, string>) => {
+    const queryObj: any = {};
+
+    // DATE FILTER
+    if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+        queryObj.createdAt = {};
+
+        if (query["createdAt[gte]"]) {
+            queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+        }
+
+        if (query["createdAt[lte]"]) {
+            queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+        }
+    }
+
+    // REMOVE SPECIAL FIELDS
+    delete query["createdAt[gte]"];
+    delete query["createdAt[lte]"];
+
     const queryBuilder = new QueryBuilder(
-        Brand.find({ isDeleted: true }).sort({ createdAt: -1 }),
+        Brand.find({ isDeleted: true, ...queryObj }).sort({ createdAt: -1 }),
         query
     );
+
 
     const brandsQuery = queryBuilder
         .filter()
