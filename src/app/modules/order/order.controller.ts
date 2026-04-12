@@ -122,7 +122,7 @@ const assignSeller = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
   const { seller } = req.body;
 
-  console.log("Seller ID in Controller:", seller, orderId);
+  // console.log("Seller ID in Controller:", seller, orderId);
 
   const result = await OrderServices.assignSeller(orderId, seller);
 

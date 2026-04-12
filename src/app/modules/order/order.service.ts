@@ -455,7 +455,9 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
       "billingDetails.email": user.email,
       ...queryObj,
     });
-  } else if ([Role.MODERATOR, Role.MANAGER, Role.TELLICELSS].includes(user.role)) {
+  } else if (
+    [Role.MODERATOR, Role.MANAGER, Role.TELLICELSS].includes(user.role)
+  ) {
     baseQuery = Order.find({
       isDeleted: false,
       seller: userId,
@@ -464,6 +466,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   } else if (user.role === Role.ADMIN) {
     baseQuery = Order.find({
       isDeleted: false,
+      seller: userId,
       ...queryObj,
     });
   } else {
