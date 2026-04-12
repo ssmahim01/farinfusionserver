@@ -20,7 +20,7 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
 
 const getMyOrders = catchAsync(
   async (req: Request, res: Response) => {
-    const userId = req.user?.userId;
+    const userId = req.user.userId;
     const query = req.query as Record<string, string>;
 
     const result = await OrderServices.getMyOrders(userId, query);
@@ -117,6 +117,23 @@ const updateOrder = catchAsync(
     });
   }
 );
+
+const assignSeller = catchAsync(async (req: Request, res: Response) => {
+  const orderId = req.params.id as string;
+  const { seller } = req.body;
+
+  console.log("Seller ID in Controller:", seller, orderId);
+
+  const result = await OrderServices.assignSeller(orderId, seller);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Seller assigned successfully",
+    data: result,
+  });
+});
+
 const updateCompleteOrder = catchAsync(
   async (req: Request, res: Response) => {
     const orderId = req.params.id as string;
@@ -159,6 +176,7 @@ export const OrderControllers = {
   getSingleOrder,
   updateOrder,
   updateCompleteOrder,
+  assignSeller,
   deleteOrder,
   updateOrderStatus
 };

@@ -21,7 +21,11 @@ router.patch(
   validateRequest(updateUserZodSchema),
   UserControllers.updateProfile,
 );
-router.get("/all-users", checkAuth(Role.ADMIN), UserControllers.getAllUsers);
+router.get(
+  "/all-users",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  UserControllers.getAllUsers,
+);
 router.get(
   "/all-trash-users",
   checkAuth(Role.ADMIN),
@@ -32,6 +36,13 @@ router.get(
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   UserControllers.getAllCustomers,
 );
+
+router.get(
+  "/my-customers",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  UserControllers.getMyCustomers,
+);
+
 router.get(
   "/all-trash-customers",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
@@ -51,7 +62,15 @@ router.patch(
 );
 router.delete("/:id", checkAuth(Role.ADMIN), UserControllers.deleteUser);
 
-router.post("/user-trash/:id", checkAuth(Role.ADMIN), UserControllers.updateUserTrash);
-router.post("/customer-trash/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS), UserControllers.updateCustomerTrash);
+router.post(
+  "/user-trash/:id",
+  checkAuth(Role.ADMIN),
+  UserControllers.updateUserTrash,
+);
+router.post(
+  "/customer-trash/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  UserControllers.updateCustomerTrash,
+);
 
 export const userRoutes = router;

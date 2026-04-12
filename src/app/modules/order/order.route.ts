@@ -7,56 +7,66 @@ const router = express.Router();
 
 router.post(
   "/",
-  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN, Role.TELLICELSS),
-  OrderControllers.createOrder
+  checkAuth(
+    Role.CUSTOMER,
+    Role.MODERATOR,
+    Role.MANAGER,
+    Role.ADMIN,
+    Role.TELLICELSS,
+  ),
+  OrderControllers.createOrder,
 );
 
 router.get(
   "/my-orders",
-  checkAuth(Role.CUSTOMER, Role.MODERATOR, Role.MANAGER, Role.ADMIN, Role.TELLICELSS),
-  OrderControllers.getMyOrders
+  checkAuth(
+    Role.CUSTOMER,
+    Role.MODERATOR,
+    Role.MANAGER,
+    Role.ADMIN,
+    Role.TELLICELSS,
+  ),
+  OrderControllers.getMyOrders,
 );
 
 router.get(
   "/",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
-  OrderControllers.getAllOrders
+  OrderControllers.getAllOrders,
 );
 
 router.get(
   "/trash",
   checkAuth(Role.ADMIN, Role.MANAGER),
-  OrderControllers.getAllTrashOrders
+  OrderControllers.getAllTrashOrders,
 );
 
 router.get(
   "/:id",
   checkAuth(...Object.values(Role)),
-  OrderControllers.getSingleOrder
+  OrderControllers.getSingleOrder,
 );
 
+router.patch("/:id", OrderControllers.updateOrder);
+
 router.patch(
-  "/:id",
-  checkAuth(...Object.values(Role)),
-  OrderControllers.updateOrder
+  "/:id/assign-seller",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.assignSeller,
 );
 
 router.patch(
   "/:id/confirm-status",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
-  OrderControllers.updateOrderStatus
+  OrderControllers.updateOrderStatus,
 );
 
 router.patch(
   "/:id/status",
-    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
-  OrderControllers.updateCompleteOrder
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.updateCompleteOrder,
 );
 
-router.delete(
-  "/:id",
-  checkAuth(Role.ADMIN),
-  OrderControllers.deleteOrder
-);
+router.delete("/:id", checkAuth(Role.ADMIN), OrderControllers.deleteOrder);
 
 export const orderRoutes = router;

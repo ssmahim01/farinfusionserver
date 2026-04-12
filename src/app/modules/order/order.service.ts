@@ -300,6 +300,32 @@ const updateOrder = async (orderId: string, payload: any) => {
   return updatedOrder;
 };
 
+const assignSeller = async (orderId: string, sellerId: string) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw new AppError(404, "Order not found");
+  }
+
+  const seller = await User.findById(sellerId);
+  if (!seller) {
+    throw new AppError(404, "Seller not found");
+  }
+
+  if (!["ADMIN", "MANAGER", "MODERATOR", "TELLICELSS"].includes(seller.role)) {
+    throw new AppError(400, "Invalid seller role");
+  }
+
+  order.seller = new Types.ObjectId(sellerId);
+
+  await order.save();
+
+  return await order.populate([
+    { path: "seller", select: "name email role" },
+    { path: "customer", select: "name email" },
+  ]);
+};
+
 const getAllOrders = async (query: Record<string, string>) => {
   const queryObj: any = {};
 
@@ -429,7 +455,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
       "billingDetails.email": user.email,
       ...queryObj,
     });
-  } else if ([Role.MODERATOR, Role.MANAGER].includes(user.role)) {
+  } else if ([Role.MODERATOR, Role.MANAGER, Role.TELLICELSS].includes(user.role)) {
     baseQuery = Order.find({
       isDeleted: false,
       seller: userId,
@@ -470,6 +496,7 @@ export const OrderServices = {
   getAllTrashOrders,
   updateOrder,
   updateOrderStatus,
+  assignSeller,
   deleteOrder,
   getMyOrders,
 };

@@ -8,6 +8,7 @@ import { envVars } from '../../config/env';
 import { JwtPayload } from 'jsonwebtoken';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { userSearchableFields } from './user.constants copy';
+import { Order } from '../order/order.model';
 
 const createUserService = async (payload: Partial<IUser>) => {
     const { email, password, ...rest } = payload;
@@ -86,6 +87,44 @@ const updateUser = async (
     });
 
     return updatedUser;
+};
+
+const getMyCustomers = async (
+  userId: string,
+  query: Record<string, string>
+) => {
+  const orders = await Order.find({
+    seller: userId,
+    isDeleted: false,
+  })
+    .populate("customer", "name email phone address")
+    .select("customer billingDetails");
+
+  const customerMap = new Map();
+
+  orders.forEach((order) => {
+    if (order.customer?._id) {
+      customerMap.set(order.customer._id.toString(), order.customer);
+    }
+
+    else if (order.billingDetails?.email) {
+      customerMap.set(order.billingDetails.email, {
+        name: order.billingDetails.fullName,
+        email: order.billingDetails.email,
+        phone: order.billingDetails.phone,
+        address: order.billingDetails.address,
+      });
+    }
+  });
+
+  const customers = Array.from(customerMap.values());
+
+  return {
+    data: customers,
+    meta: {
+      total: customers.length,
+    },
+  };
 };
 
 const deleteUser = async (id: string) => {
@@ -227,5 +266,6 @@ export const UserServices = {
     getAllTrashUsers,
     getAllCustomers,
     getAllTrashCustomers,
+    getMyCustomers,
     deleteUser
 }
