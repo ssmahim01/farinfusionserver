@@ -12,7 +12,6 @@ export const seedAdmin = async () => {
     }
 
     const hashedPassword = await bcrypt.hash("Admin@123", 10);
-
     const admin = await User.create({
       name: "Super Admin",
       email: "admin@farinfusion.com",
