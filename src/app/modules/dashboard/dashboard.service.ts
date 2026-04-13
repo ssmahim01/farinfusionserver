@@ -82,6 +82,12 @@ const getDashboardOverview = async (
   ]);
 
   const totalSalary = salaryAgg[0]?.totalSalary || 0;
+  let mySalary = 0;
+
+if (role === Role.GENERALSTAFF) {
+  const user = await User.findById(userId);
+  mySalary = user?.salary || 0;
+}
 
   if (role === Role.CUSTOMER) {
     const user = await User.findById(userId);
@@ -186,6 +192,7 @@ const getDashboardOverview = async (
     totalProducts,
     orderStats,
     staffEarnings,
+    mySalary,
     totalCost,
     totalSalary,
     netProfit,

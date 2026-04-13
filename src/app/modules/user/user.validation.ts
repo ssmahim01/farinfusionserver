@@ -46,8 +46,8 @@ export const createUserZodSchema = z.object({
         .min(2, { message: "Address must be at least 2 characters long." })
         .max(100, { message: "Address cannot exceed 100 characters." }),
     role: z
-        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS], {
-            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS or MODERATOR",
+        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS, Role.GENERALSTAFF], {
+            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS, GENERAL STAFF or MODERATOR",
         })
         .optional(),
 })
@@ -64,8 +64,8 @@ export const updateUserZodSchema = z.object({
         })
         .optional(),
     role: z
-        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS], {
-            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS or MODERATOR",
+        .enum([Role.ADMIN, Role.CUSTOMER, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS, Role.GENERALSTAFF], {
+            invalid_type_error: "Role must be either ADMIN, CUSTOMER, MANAGER, TELLICELSS, GENERAL STAFF or MODERATOR",
         })
         .optional(),
     isActive: z
