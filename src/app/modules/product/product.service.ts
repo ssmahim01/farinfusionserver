@@ -128,7 +128,26 @@ const deleteProduct = async (id: string) => {
 };
 
 const getAllProducts = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Product.find({isDeleted: false}).populate('category'), query)
+  const queryObj: any = {};
+
+  // DATE FILTER
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    queryObj.createdAt = {};
+
+    if (query["createdAt[gte]"]) {
+      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
+  }
+
+  // REMOVE SPECIAL FIELDS
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
+
+  const queryBuilder = new QueryBuilder(Product.find({isDeleted: false, ...queryObj}).populate('category'), query)
   const productsData = queryBuilder
     .filter()
     .search(productSearchableFields)
@@ -148,7 +167,26 @@ const getAllProducts = async (query: Record<string, string>) => {
 };
 
 const getAllTrashProducts = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Product.find({isDeleted: true}).populate('category'), query)
+  const queryObj: any = {};
+
+  // DATE FILTER
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    queryObj.createdAt = {};
+
+    if (query["createdAt[gte]"]) {
+      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
+  }
+
+  // REMOVE SPECIAL FIELDS
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
+
+  const queryBuilder = new QueryBuilder(Product.find({isDeleted: true, ...queryObj}).populate('category'), query)
   const productsData = queryBuilder
     .filter()
     .search(productSearchableFields)
