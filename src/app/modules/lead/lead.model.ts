@@ -14,6 +14,10 @@ const LeadSchema = new Schema<ILead>(
       lowercase: true,
       trim: true,
     },
+    hasOrderedToday: {
+      type: Boolean,
+      default: false,
+    },
     phone: {
       type: String,
       required: [true, "Phone is required"],

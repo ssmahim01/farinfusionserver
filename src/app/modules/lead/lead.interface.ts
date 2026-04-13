@@ -24,6 +24,7 @@ export interface ILead {
     address: string;
     status: LeadStatus;
     isDeleted?: boolean;
+    hasOrderedToday?: boolean;
     priority?: LeadPriority;
     assignedBy?: Types.ObjectId;
     notes?: string;

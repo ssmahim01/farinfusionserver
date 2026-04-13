@@ -10,7 +10,7 @@ import { Role } from "../user/user.interface";
 const getDashboardOverview = async (
   userId: string,
   role: string,
-  query: Record<string, string>
+  query: Record<string, string>,
 ) => {
   const queryObj: any = {};
 
@@ -34,6 +34,54 @@ const getDashboardOverview = async (
     isDeleted: false,
     ...queryObj,
   };
+
+  const costAgg = await Order.aggregate([
+    { $match: { ...matchCondition, orderStatus: "COMPLETED" } },
+    { $unwind: "$products" },
+    {
+      $lookup: {
+        from: "products",
+        localField: "products.product",
+        foreignField: "_id",
+        as: "productInfo",
+      },
+    },
+    { $unwind: "$productInfo" },
+    {
+      $group: {
+        _id: null,
+        totalCost: {
+          $sum: {
+            $multiply: [
+              "$products.quantity",
+              { $ifNull: ["$productInfo.buyingPrice", 0] },
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  const totalCost = costAgg[0]?.totalCost || 0;
+
+  const salaryAgg = await User.aggregate([
+    {
+      $match: {
+        role: { $in: ["ADMIN", "MANAGER", "MODERATOR", "TELLICELSS"] },
+        isDeleted: false,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSalary: {
+          $sum: { $ifNull: ["$salary", 0] },
+        },
+      },
+    },
+  ]);
+
+  const totalSalary = salaryAgg[0]?.totalSalary || 0;
 
   if (role === Role.CUSTOMER) {
     const user = await User.findById(userId);
@@ -69,26 +117,23 @@ const getDashboardOverview = async (
     orderStats[item._id as keyof typeof orderStats] = item.count;
   });
 
-  const revenueAgg = await Payment.aggregate([
+  const revenueAgg = await Order.aggregate([
     {
-      $lookup: {
-        from: "orders",
-        localField: "order",
-        foreignField: "_id",
-        as: "order",
+      $match: {
+        ...matchCondition,
+        orderStatus: "COMPLETED",
       },
     },
-    { $unwind: "$order" },
-    { $match: matchCondition },
     {
       $group: {
         _id: null,
-        total: { $sum: "$amount" },
+        total: { $sum: "$total" },
       },
     },
   ]);
 
   const totalRevenue = revenueAgg[0]?.total || 0;
+  const netProfit = totalRevenue - totalCost - totalSalary;
 
   const recentOrders = await Order.find(matchCondition)
     .sort({ createdAt: -1 })
@@ -141,6 +186,9 @@ const getDashboardOverview = async (
     totalProducts,
     orderStats,
     staffEarnings,
+    totalCost,
+    totalSalary,
+    netProfit,
     recentOrders,
     role,
   };
