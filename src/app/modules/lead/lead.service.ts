@@ -31,6 +31,7 @@ const createLeadService = async (payload: any, user: JwtPayload) => {
       $lte: todayEnd,
     },
     isDeleted: false,
+    isPublished: true,
   }).session(session);
 
   if (existingOrderToday) {

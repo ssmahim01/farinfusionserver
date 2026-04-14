@@ -32,6 +32,7 @@ const getDashboardOverview = async (
 
   let matchCondition: any = {
     isDeleted: false,
+    isPublished: true,
     ...queryObj,
   };
 

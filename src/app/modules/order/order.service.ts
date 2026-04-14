@@ -20,6 +20,9 @@ interface TCreateOrderPayload {
   paymentMethod?: PaymentMethod;
   total: number;
   discount?: number;
+  scheduleType?: string;
+  scheduledAt?: Date;
+  isPublished?: boolean;
   products: IOrderProduct[];
   note: string;
   shippingCost?: number;
@@ -33,6 +36,21 @@ interface TCreateOrderPayload {
   user?: string;
   seller?: string;
 }
+
+const publishScheduledOrders = async () => {
+  const now = new Date();
+
+  await Order.updateMany(
+    {
+      scheduleType: "SCHEDULED",
+      isPublished: false,
+      scheduledAt: { $lte: now },
+    },
+    {
+      $set: { isPublished: true },
+    },
+  );
+};
 
 const getTransactionId = () => {
   return `Tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -96,6 +114,8 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       payload.shippingCost || 0,
     );
 
+    const isScheduled = payload.scheduleType === "SCHEDULED";
+
     const orderDoc: any = {
       customOrderId: `ORD-${customOrderId}`,
       orderType: payload.orderType,
@@ -122,6 +142,9 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       shippingCost: calculatedOrder.shippingCost,
       total: payload?.total || calculatedOrder.totalPrice,
       discount: payload?.discount || 0,
+      scheduleType: payload.scheduleType || "INSTANT",
+      scheduledAt: payload.scheduledAt || null,
+      isPublished: isScheduled ? false : true,
 
       orderStatus: OrderStatus.PENDING,
     };
@@ -327,6 +350,7 @@ const assignSeller = async (orderId: string, sellerId: string) => {
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
+  await publishScheduledOrders();
   const queryObj: any = {};
 
   // DATE FILTER
@@ -354,6 +378,7 @@ const getAllOrders = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(
     Order.find({
       isDeleted: false,
+      isPublished: true,
       ...queryObj,
     }),
     query,
@@ -404,7 +429,10 @@ const getAllOrders = async (query: Record<string, string>) => {
 };
 
 const getAllTrashOrders = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Order.find({ isDeleted: true }), query);
+  const queryBuilder = new QueryBuilder(
+    Order.find({ isDeleted: true, isPublished: true }),
+    query,
+  );
   const ordersData = queryBuilder
     .filter()
     .search(orderSearchableFields)
@@ -422,6 +450,7 @@ const getAllTrashOrders = async (query: Record<string, string>) => {
 };
 
 const getMyOrders = async (userId: string, query: Record<string, string>) => {
+  await publishScheduledOrders();
   const queryObj: any = {};
 
   // DATE FILTER
@@ -452,6 +481,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   if (user.role === Role.CUSTOMER) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       "billingDetails.email": user.email,
       ...queryObj,
     });
@@ -460,12 +490,14 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   ) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       seller: userId,
       ...queryObj,
     });
   } else if (user.role === Role.ADMIN) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       seller: userId,
       ...queryObj,
     });
