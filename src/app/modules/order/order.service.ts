@@ -428,6 +428,94 @@ const getAllOrders = async (query: Record<string, string>) => {
   return { data, meta, stats: formattedStats };
 };
 
+const getAllScheduledOrders = async (query: Record<string, string>) => {
+  const queryObj: any = {
+    isDeleted: false,
+    isPublished: false,
+    scheduleType: "SCHEDULED",
+  };
+
+  // DATE FILTER (optional)
+  if (query["scheduledAt[gte]"] || query["scheduledAt[lte]"]) {
+    queryObj.scheduledAt = {};
+
+    if (query["scheduledAt[gte]"]) {
+      queryObj.scheduledAt.$gte = new Date(query["scheduledAt[gte]"]);
+    }
+
+    if (query["scheduledAt[lte]"]) {
+      queryObj.scheduledAt.$lte = new Date(query["scheduledAt[lte]"]);
+    }
+  }
+
+  const queryBuilder = new QueryBuilder(
+    Order.find(queryObj),
+    query
+  );
+
+  const data = await queryBuilder
+    .search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name email phone")
+    .populate("seller", "name email role")
+    .populate("products.product");
+
+  const meta = await queryBuilder.getMeta();
+
+  return { data, meta };
+};
+
+const getMyScheduledOrders = async (
+  userId: string,
+  query: Record<string, string>
+) => {
+  const user = await User.findById(userId).select("role email");
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  let baseQuery: any = {
+    isDeleted: false,
+    isPublished: false,
+    scheduleType: "SCHEDULED",
+  };
+
+  if (user.role === Role.CUSTOMER) {
+    baseQuery["billingDetails.email"] = user.email;
+  } else if (
+    [Role.MODERATOR, Role.MANAGER, Role.TELLICELSS].includes(user.role)
+  ) {
+    baseQuery.seller = userId;
+  } else if (user.role === Role.ADMIN) {
+    baseQuery.seller = userId; 
+  }
+
+  const queryBuilder = new QueryBuilder(
+    Order.find(baseQuery),
+    query
+  );
+
+  const data = await queryBuilder
+    .search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name email phone")
+    .populate("seller", "name email role")
+    .populate("products.product");
+
+  const meta = await queryBuilder.getMeta();
+
+  return { data, meta };
+};
+
 const getAllTrashOrders = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(
     Order.find({ isDeleted: true, isPublished: true }),
@@ -533,5 +621,7 @@ export const OrderServices = {
   updateOrderStatus,
   assignSeller,
   deleteOrder,
+  getAllScheduledOrders,
+  getMyScheduledOrders,
   getMyOrders,
 };

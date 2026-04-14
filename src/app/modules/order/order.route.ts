@@ -42,6 +42,18 @@ router.get(
 );
 
 router.get(
+  "/scheduled-orders",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.getAllScheduledOrders,
+);
+
+router.get(
+  "/my-scheduled-orders",
+  checkAuth(...Object.values(Role)),
+  OrderControllers.getMyScheduledOrders,
+);
+
+router.get(
   "/:id",
   checkAuth(...Object.values(Role)),
   OrderControllers.getSingleOrder,
