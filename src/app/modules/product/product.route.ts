@@ -23,7 +23,7 @@ router.delete("/:id", checkAuth(Role.ADMIN), ProductControllers.deleteProduct)
 router.patch(
     "/:id", 
     checkAuth(Role.ADMIN), 
-    multerUpload.array('images', 3),
+    multerUpload.none(),
     validateRequest(updateProductZodSchema), 
     ProductControllers.updateProduct
 )

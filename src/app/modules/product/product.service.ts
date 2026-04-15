@@ -80,7 +80,7 @@ const updateProduct = async (
   }
 
   // 🟢 Admin overwrite stock
-  if (payload.totalAddedStock) {
+  if (payload?.totalAddedStock !== undefined) {
     product.availableStock = payload.totalAddedStock
   }
 

@@ -54,6 +54,12 @@ router.get(
 );
 
 router.get(
+  "/check-phone",
+  checkAuth(...Object.values(Role)),
+  OrderControllers.getCustomerOrder,
+);
+
+router.get(
   "/:id",
   checkAuth(...Object.values(Role)),
   OrderControllers.getSingleOrder,

@@ -40,20 +40,54 @@ interface TCreateOrderPayload {
 const publishScheduledOrders = async () => {
   const now = new Date();
 
-  await Order.updateMany(
-    {
-      scheduleType: "SCHEDULED",
-      isPublished: false,
-      scheduledAt: { $lte: now },
-    },
-    {
-      $set: { isPublished: true },
-    },
-  );
+  const orders = await Order.find({
+    scheduleType: "SCHEDULED",
+    isPublished: false,
+    scheduledAt: { $lte: now },
+  });
+
+  for (const order of orders) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const existing = await Order.findOne({
+      "billingDetails.phone": order?.billingDetails?.phone,
+      createdAt: {
+        $gte: todayStart,
+        $lte: todayEnd,
+      },
+      isPublished: true,
+      _id: { $ne: order._id },
+    });
+
+    if (!existing) {
+      order.isPublished = true;
+      await order.save();
+    }
+  }
 };
 
 const getTransactionId = () => {
   return `Tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+};
+
+const checkCustomerOrder = async (phone: string) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const exists = await Order.exists({
+    "billingDetails.phone": phone,
+    createdAt: { $gte: todayStart, $lte: todayEnd },
+    isPublished: true,
+  });
+
+  return { blocked: !!exists };
 };
 
 const createOrder = async (payload: TCreateOrderPayload) => {
@@ -168,6 +202,29 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         throw new AppError(httpStatus.BAD_REQUEST, "Seller required");
       }
       orderDoc.seller = payload.seller;
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const existingOrderToday = await Order.findOne({
+      "billingDetails.phone": payload.billingDetails.phone,
+      createdAt: {
+        $gte: todayStart,
+        $lte: todayEnd,
+      },
+      isDeleted: false,
+      isPublished: true,
+    }).session(session);
+
+    if (existingOrderToday) {
+      throw new AppError(
+        400,
+        "This customer already placed an order today. Try again after 12 AM.",
+      );
     }
 
     const order = new Order(orderDoc);
@@ -448,10 +505,7 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
     }
   }
 
-  const queryBuilder = new QueryBuilder(
-    Order.find(queryObj),
-    query
-  );
+  const queryBuilder = new QueryBuilder(Order.find(queryObj), query);
 
   const data = await queryBuilder
     .search(orderSearchableFields)
@@ -471,7 +525,7 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
 
 const getMyScheduledOrders = async (
   userId: string,
-  query: Record<string, string>
+  query: Record<string, string>,
 ) => {
   const user = await User.findById(userId).select("role email");
 
@@ -492,13 +546,10 @@ const getMyScheduledOrders = async (
   ) {
     baseQuery.seller = userId;
   } else if (user.role === Role.ADMIN) {
-    baseQuery.seller = userId; 
+    baseQuery.seller = userId;
   }
 
-  const queryBuilder = new QueryBuilder(
-    Order.find(baseQuery),
-    query
-  );
+  const queryBuilder = new QueryBuilder(Order.find(baseQuery), query);
 
   const data = await queryBuilder
     .search(orderSearchableFields)
@@ -618,6 +669,7 @@ export const OrderServices = {
   getAllOrders,
   getAllTrashOrders,
   updateOrder,
+  checkCustomerOrder,
   updateOrderStatus,
   assignSeller,
   deleteOrder,

@@ -137,6 +137,18 @@ const getMyScheduledOrders = catchAsync(async (req, res) => {
   });
 });
 
+const getCustomerOrder = catchAsync(async (req, res) => {
+  const phone = req.body;
+  const result = await OrderServices.checkCustomerOrder(phone);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Customer order retrieved",
+    data: result,
+  });
+});
+
 const getAllScheduledOrders = catchAsync(async (req, res) => {
   const result = await OrderServices.getAllScheduledOrders(
     req.query as Record<string, string>,
@@ -190,5 +202,6 @@ export const OrderControllers = {
   getAllScheduledOrders,
   getMyScheduledOrders,
   deleteOrder,
+  getCustomerOrder,
   updateOrderStatus,
 };
