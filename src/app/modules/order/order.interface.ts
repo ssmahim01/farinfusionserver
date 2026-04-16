@@ -40,6 +40,9 @@ export interface IBillingDetails {
 export interface IOrder {
   _id?: Types.ObjectId;
   customOrderId?: number;
+  scheduleType?: string;
+  scheduledAt?: Date;
+  isPublished?: boolean;
 
   orderType: OrderType;
 
@@ -50,7 +53,7 @@ export interface IOrder {
   products: IOrderProduct[];
 
   subtotal: number;
-  discount: number
+  discount: number;
   shippingCost: number;
   note: string;
   total: number;

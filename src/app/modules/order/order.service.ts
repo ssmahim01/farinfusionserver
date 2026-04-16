@@ -20,6 +20,9 @@ interface TCreateOrderPayload {
   paymentMethod?: PaymentMethod;
   total: number;
   discount?: number;
+  scheduleType?: string;
+  scheduledAt?: Date;
+  isPublished?: boolean;
   products: IOrderProduct[];
   note: string;
   shippingCost?: number;
@@ -34,8 +37,57 @@ interface TCreateOrderPayload {
   seller?: string;
 }
 
+const publishScheduledOrders = async () => {
+  const now = new Date();
+
+  const orders = await Order.find({
+    scheduleType: "SCHEDULED",
+    isPublished: false,
+    scheduledAt: { $lte: now },
+  });
+
+  for (const order of orders) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const existing = await Order.findOne({
+      "billingDetails.phone": order?.billingDetails?.phone,
+      createdAt: {
+        $gte: todayStart,
+        $lte: todayEnd,
+      },
+      isPublished: true,
+      _id: { $ne: order._id },
+    });
+
+    if (!existing) {
+      order.isPublished = true;
+      await order.save();
+    }
+  }
+};
+
 const getTransactionId = () => {
   return `Tran_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+};
+
+const checkCustomerOrder = async (phone: string) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const exists = await Order.exists({
+    "billingDetails.phone": phone,
+    createdAt: { $gte: todayStart, $lte: todayEnd },
+    isPublished: true,
+  });
+
+  return { blocked: !!exists };
 };
 
 const createOrder = async (payload: TCreateOrderPayload) => {
@@ -96,6 +148,8 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       payload.shippingCost || 0,
     );
 
+    const isScheduled = payload.scheduleType === "SCHEDULED";
+
     const orderDoc: any = {
       customOrderId: `ORD-${customOrderId}`,
       orderType: payload.orderType,
@@ -122,6 +176,9 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       shippingCost: calculatedOrder.shippingCost,
       total: payload?.total || calculatedOrder.totalPrice,
       discount: payload?.discount || 0,
+      scheduleType: payload.scheduleType || "INSTANT",
+      scheduledAt: payload.scheduledAt || null,
+      isPublished: isScheduled ? false : true,
 
       orderStatus: OrderStatus.PENDING,
     };
@@ -145,6 +202,29 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         throw new AppError(httpStatus.BAD_REQUEST, "Seller required");
       }
       orderDoc.seller = payload.seller;
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const existingOrderToday = await Order.findOne({
+      "billingDetails.phone": payload.billingDetails.phone,
+      createdAt: {
+        $gte: todayStart,
+        $lte: todayEnd,
+      },
+      isDeleted: false,
+      isPublished: true,
+    }).session(session);
+
+    if (existingOrderToday) {
+      throw new AppError(
+        400,
+        "This customer already placed an order today. Try again after 12 AM.",
+      );
     }
 
     const order = new Order(orderDoc);
@@ -327,6 +407,7 @@ const assignSeller = async (orderId: string, sellerId: string) => {
 };
 
 const getAllOrders = async (query: Record<string, string>) => {
+  await publishScheduledOrders();
   const queryObj: any = {};
 
   // DATE FILTER
@@ -354,6 +435,7 @@ const getAllOrders = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(
     Order.find({
       isDeleted: false,
+      isPublished: true,
       ...queryObj,
     }),
     query,
@@ -403,8 +485,93 @@ const getAllOrders = async (query: Record<string, string>) => {
   return { data, meta, stats: formattedStats };
 };
 
+const getAllScheduledOrders = async (query: Record<string, string>) => {
+  const queryObj: any = {
+    isDeleted: false,
+    isPublished: false,
+    scheduleType: "SCHEDULED",
+  };
+
+  // DATE FILTER (optional)
+  if (query["scheduledAt[gte]"] || query["scheduledAt[lte]"]) {
+    queryObj.scheduledAt = {};
+
+    if (query["scheduledAt[gte]"]) {
+      queryObj.scheduledAt.$gte = new Date(query["scheduledAt[gte]"]);
+    }
+
+    if (query["scheduledAt[lte]"]) {
+      queryObj.scheduledAt.$lte = new Date(query["scheduledAt[lte]"]);
+    }
+  }
+
+  const queryBuilder = new QueryBuilder(Order.find(queryObj), query);
+
+  const data = await queryBuilder
+    .search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name email phone")
+    .populate("seller", "name email role")
+    .populate("products.product");
+
+  const meta = await queryBuilder.getMeta();
+
+  return { data, meta };
+};
+
+const getMyScheduledOrders = async (
+  userId: string,
+  query: Record<string, string>,
+) => {
+  const user = await User.findById(userId).select("role email");
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  let baseQuery: any = {
+    isDeleted: false,
+    isPublished: false,
+    scheduleType: "SCHEDULED",
+  };
+
+  if (user.role === Role.CUSTOMER) {
+    baseQuery["billingDetails.email"] = user.email;
+  } else if (
+    [Role.MODERATOR, Role.MANAGER, Role.TELLICELSS].includes(user.role)
+  ) {
+    baseQuery.seller = userId;
+  } else if (user.role === Role.ADMIN) {
+    baseQuery.seller = userId;
+  }
+
+  const queryBuilder = new QueryBuilder(Order.find(baseQuery), query);
+
+  const data = await queryBuilder
+    .search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name email phone")
+    .populate("seller", "name email role")
+    .populate("products.product");
+
+  const meta = await queryBuilder.getMeta();
+
+  return { data, meta };
+};
+
 const getAllTrashOrders = async (query: Record<string, string>) => {
-  const queryBuilder = new QueryBuilder(Order.find({ isDeleted: true }), query);
+  const queryBuilder = new QueryBuilder(
+    Order.find({ isDeleted: true, isPublished: true }),
+    query,
+  );
   const ordersData = queryBuilder
     .filter()
     .search(orderSearchableFields)
@@ -422,6 +589,7 @@ const getAllTrashOrders = async (query: Record<string, string>) => {
 };
 
 const getMyOrders = async (userId: string, query: Record<string, string>) => {
+  await publishScheduledOrders();
   const queryObj: any = {};
 
   // DATE FILTER
@@ -452,6 +620,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   if (user.role === Role.CUSTOMER) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       "billingDetails.email": user.email,
       ...queryObj,
     });
@@ -460,12 +629,14 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   ) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       seller: userId,
       ...queryObj,
     });
   } else if (user.role === Role.ADMIN) {
     baseQuery = Order.find({
       isDeleted: false,
+      isPublished: true,
       seller: userId,
       ...queryObj,
     });
@@ -498,8 +669,11 @@ export const OrderServices = {
   getAllOrders,
   getAllTrashOrders,
   updateOrder,
+  checkCustomerOrder,
   updateOrderStatus,
   assignSeller,
   deleteOrder,
+  getAllScheduledOrders,
+  getMyScheduledOrders,
   getMyOrders,
 };

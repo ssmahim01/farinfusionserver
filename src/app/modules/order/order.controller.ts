@@ -9,7 +9,6 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
 
   const createdOrder = await OrderServices.createOrder(payload);
 
-
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -18,69 +17,61 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getMyOrders = catchAsync(
-  async (req: Request, res: Response) => {
-    const userId = req.user.userId;
-    const query = req.query as Record<string, string>;
+const getMyOrders = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.userId;
+  const query = req.query as Record<string, string>;
 
-    const result = await OrderServices.getMyOrders(userId, query);
+  const result = await OrderServices.getMyOrders(userId, query);
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "Orders Retrieved Successfully",
-      meta: result.meta,
-      data: result.data,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Orders Retrieved Successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
 
-const getAllOrders = catchAsync(
-  async (req: Request, res: Response) => {
-    const query = req.query as Record<string, string>;
+const getAllOrders = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query as Record<string, string>;
 
-    const result = await OrderServices.getAllOrders(query);
+  const result = await OrderServices.getAllOrders(query);
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "All Orders Retrieved Successfully",
-      meta: result.meta,
-      data: result.data,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Orders Retrieved Successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
 
-const getAllTrashOrders = catchAsync(
-  async (req: Request, res: Response) => {
-    const query = req.query as Record<string, string>;
+const getAllTrashOrders = catchAsync(async (req: Request, res: Response) => {
+  const query = req.query as Record<string, string>;
 
-    const result = await OrderServices.getAllTrashOrders(query);
+  const result = await OrderServices.getAllTrashOrders(query);
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "All Trash Orders Retrieved Successfully",
-      meta: result.meta,
-      data: result.data,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "All Trash Orders Retrieved Successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
 
-const getSingleOrder = catchAsync(
-  async (req: Request, res: Response) => {
-    const orderId = req.params.id as string;
+const getSingleOrder = catchAsync(async (req: Request, res: Response) => {
+  const orderId = req.params.id as string;
 
-    const result = await OrderServices.getSingleOrder(orderId);
+  const result = await OrderServices.getSingleOrder(orderId);
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "Order Retrieved Successfully",
-      data: result,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Order Retrieved Successfully",
+    data: result,
+  });
+});
 
 const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id;
@@ -99,24 +90,19 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateOrder = catchAsync(
-  async (req: Request, res: Response) => {
-    const orderId = req.params.id as string;
-    const payload = req.body;
+const updateOrder = catchAsync(async (req: Request, res: Response) => {
+  const orderId = req.params.id as string;
+  const payload = req.body;
 
-    const result = await OrderServices.updateOrder(
-      orderId,
-      payload
-    );
+  const result = await OrderServices.updateOrder(orderId, payload);
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "Order Updated Successfully",
-      data: result,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Order Updated Successfully",
+    data: result,
+  });
+});
 
 const assignSeller = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
@@ -134,39 +120,75 @@ const assignSeller = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateCompleteOrder = catchAsync(
-  async (req: Request, res: Response) => {
-    const orderId = req.params.id as string;
-    const payload = req.body;
+const getMyScheduledOrders = catchAsync(async (req, res) => {
+  const user = req.user;
 
-    const result = await OrderServices.updateOrder(
-      orderId,
-      payload
-    );
+  const result = await OrderServices.getMyScheduledOrders(
+    user.userId,
+    req.query as Record<string, string>,
+  );
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "Order status changed to completed",
-      data: result,
-    });
-  }
-);
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "My scheduled orders retrieved",
+    data: result.data,
+    meta: result.meta,
+  });
+});
 
-const deleteOrder = catchAsync(
-  async (req: Request, res: Response) => {
-    const orderId = req.params.id as string;
+const getCustomerOrder = catchAsync(async (req, res) => {
+  const phone = req.body;
+  const result = await OrderServices.checkCustomerOrder(phone);
 
-    const result = await OrderServices.deleteOrder(orderId);
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Customer order retrieved",
+    data: result,
+  });
+});
 
-    sendResponse(res, {
-      success: true,
-      statusCode: httpStatus.OK,
-      message: "Order Deleted Successfully",
-      data: result,
-    });
-  }
-);
+const getAllScheduledOrders = catchAsync(async (req, res) => {
+  const result = await OrderServices.getAllScheduledOrders(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Scheduled orders retrieved",
+    data: result.data,
+    meta: result.meta,
+  });
+});
+
+const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
+  const orderId = req.params.id as string;
+  const payload = req.body;
+
+  const result = await OrderServices.updateOrder(orderId, payload);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Order status changed to completed",
+    data: result,
+  });
+});
+
+const deleteOrder = catchAsync(async (req: Request, res: Response) => {
+  const orderId = req.params.id as string;
+
+  const result = await OrderServices.deleteOrder(orderId);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Order Deleted Successfully",
+    data: result,
+  });
+});
 
 export const OrderControllers = {
   createOrder,
@@ -177,6 +199,9 @@ export const OrderControllers = {
   updateOrder,
   updateCompleteOrder,
   assignSeller,
+  getAllScheduledOrders,
+  getMyScheduledOrders,
   deleteOrder,
-  updateOrderStatus
+  getCustomerOrder,
+  updateOrderStatus,
 };
