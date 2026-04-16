@@ -115,6 +115,7 @@ const getMyCustomers = async (
   const orders = await Order.find({
     seller: userId,
     isDeleted: false,
+    isPublished: true,
       ... queryObj,
   })
     .populate("customer", "name email phone address")

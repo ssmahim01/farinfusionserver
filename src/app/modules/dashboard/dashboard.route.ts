@@ -14,7 +14,8 @@ router.get(
     Role.MANAGER,
     Role.MODERATOR,
     Role.CUSTOMER,
-    Role.TELLICELSS
+    Role.TELLICELSS,
+    Role.GENERALSTAFF
   ),
 //   validateRequest(dashboardQuerySchema),
   DashboardController.getOverview

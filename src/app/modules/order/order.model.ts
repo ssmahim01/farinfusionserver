@@ -9,45 +9,43 @@ const counterSchema = new Schema({
 
 export const Counter = model("Counter", counterSchema);
 
-
-// Order Schema 
+// Order Schema
 const orderSchema = new Schema<IOrder>(
   {
-
     customOrderId: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
 
     orderType: {
       type: String,
       enum: ["POS", "ONLINE"],
-      required: true
+      required: true,
     },
 
     customer: {
       type: Schema.Types.ObjectId,
-      ref: "User"
+      ref: "User",
     },
 
     billingDetails: {
       fullName: String,
       phone: String,
       email: String,
-      address: String
+      address: String,
     },
 
     products: [
       {
         product: {
           type: Schema.Types.ObjectId,
-          ref: "Product"
+          ref: "Product",
         },
         title: String,
         quantity: Number,
-        price: Number
-      }
+        price: Number,
+      },
     ],
 
     subtotal: Number,
@@ -65,23 +63,38 @@ const orderSchema = new Schema<IOrder>(
     orderStatus: {
       type: String,
       enum: Object.values(OrderStatus),
-      default: OrderStatus.PENDING
+      default: OrderStatus.PENDING,
     },
 
     deliveryStatus: {
       type: String,
       enum: Object.values(DeliveryStatus),
-      default: DeliveryStatus.NOT_SHIPPED
+      default: DeliveryStatus.NOT_SHIPPED,
+    },
+
+    scheduleType: {
+      type: String,
+      enum: ["INSTANT", "SCHEDULED"],
+      default: "INSTANT",
+    },
+
+    scheduledAt: {
+      type: Date,
+    },
+
+    isPublished: {
+      type: Boolean,
+      default: true,
     },
 
     seller: {
       type: Schema.Types.ObjectId,
-      ref: "User"
+      ref: "User",
     },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 export const Order = model<IOrder>("Order", orderSchema);
