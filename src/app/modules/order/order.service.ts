@@ -470,8 +470,8 @@ const getAllOrders = async (query: Record<string, string>) => {
   });
 
   const ordersData = queryBuilder
-    .filter()
     .search(orderSearchableFields)
+    .filter()
     .sort()
     .fields()
     .paginate()

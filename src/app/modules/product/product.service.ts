@@ -1,13 +1,13 @@
-import httpStatus from 'http-status-codes';
-import AppError from '../../errorHelpers/appError';
-import { Product } from './product.model';
-import { productSearchableFields } from './product.constants';
-import { QueryBuilder } from '../../utils/QueryBuilder';
-import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
+import httpStatus from "http-status-codes";
+import AppError from "../../errorHelpers/appError";
+import { Product } from "./product.model";
+import { productSearchableFields } from "./product.constants";
+import { QueryBuilder } from "../../utils/QueryBuilder";
+import { deleteImageFromCloudinary } from "../../config/cloudinary.config";
 import mongoose from "mongoose";
-import { ICategory } from '../category/category.interface';
-import { IProduct } from './product.interface';
-
+import { ICategory } from "../category/category.interface";
+import { IProduct } from "./product.interface";
+import { JwtPayload } from "jsonwebtoken";
 
 // const createProductService = async (payload: Partial<IProduct>) => {
 //   const isProductExist = await Product.findOne({ name: payload.title });
@@ -24,7 +24,10 @@ import { IProduct } from './product.interface';
 //   return product;
 // };
 
-const createProductService = async (payload: Partial<IProduct>) => {
+const createProductService = async (
+  payload: Partial<IProduct>,
+  user: JwtPayload,
+) => {
   const isProductExist = await Product.findOne({ title: payload.title });
   if (isProductExist) {
     throw new AppError(httpStatus.CONFLICT, "Product already exists");
@@ -35,6 +38,10 @@ const createProductService = async (payload: Partial<IProduct>) => {
   payload.availableStock = availableStock;
   payload.totalAddedStock = availableStock;
   payload.totalSold = 0;
+
+  if (user.role === "MANAGER") {
+    delete payload.buyingPrice;
+  }
 
   const product = await Product.create(payload);
   return product;
@@ -72,7 +79,8 @@ const createProductService = async (payload: Partial<IProduct>) => {
 
 const updateProduct = async (
   productId: string,
-  payload: Partial<IProduct>
+  payload: Partial<IProduct>,
+  user: JwtPayload,
 ) => {
   const product = await Product.findById(productId);
   if (!product) {
@@ -81,36 +89,39 @@ const updateProduct = async (
 
   // 🟢 Admin overwrite stock
   if (payload?.totalAddedStock !== undefined) {
-    product.availableStock = payload.totalAddedStock
+    product.availableStock = payload.totalAddedStock;
   }
 
   // 🔹 Always maintain totalAddedStock
-  product.totalAddedStock = (product.availableStock ?? 0) + (product.totalSold ?? 0);
+  product.totalAddedStock =
+    (product.availableStock ?? 0) + (product.totalSold ?? 0);
 
   // 🔹 Update other fields
   const updatableFields = { ...payload };
   delete updatableFields.availableStock; // already handled
   Object.assign(product, updatableFields);
 
+  if (user.role === "MANAGER") {
+    delete payload.buyingPrice;
+  }
+
   await product.save();
   return product;
 };
 
-
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
-      .populate("category", "title")
-      .populate("brand", "title");
+    .populate("category", "title")
+    .populate("brand", "title");
   if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, "Product Not Found")
+    throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
   }
   return {
-    data: product
-  }
+    data: product,
+  };
 };
 
 const deleteProduct = async (id: string) => {
-
   const product = await Product.findById(id);
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
@@ -118,7 +129,7 @@ const deleteProduct = async (id: string) => {
 
   if (product.images && product.images.length > 0) {
     await Promise.all(
-      product.images.map((image) => deleteImageFromCloudinary(image))
+      product.images.map((image) => deleteImageFromCloudinary(image)),
     );
   }
 
@@ -147,7 +158,10 @@ const getAllProducts = async (query: Record<string, string>) => {
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
 
-  const queryBuilder = new QueryBuilder(Product.find({isDeleted: false, ...queryObj}).populate('category'), query)
+  const queryBuilder = new QueryBuilder(
+    Product.find({ isDeleted: false, ...queryObj }).populate("category"),
+    query,
+  );
   const productsData = queryBuilder
     .filter()
     .search(productSearchableFields)
@@ -157,13 +171,13 @@ const getAllProducts = async (query: Record<string, string>) => {
 
   const [data, meta] = await Promise.all([
     productsData.build(),
-    queryBuilder.getMeta()
-  ])
+    queryBuilder.getMeta(),
+  ]);
 
   return {
     data,
-    meta
-  }
+    meta,
+  };
 };
 
 const getAllTrashProducts = async (query: Record<string, string>) => {
@@ -186,7 +200,10 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
 
-  const queryBuilder = new QueryBuilder(Product.find({isDeleted: true, ...queryObj}).populate('category'), query)
+  const queryBuilder = new QueryBuilder(
+    Product.find({ isDeleted: true, ...queryObj }).populate("category"),
+    query,
+  );
   const productsData = queryBuilder
     .filter()
     .search(productSearchableFields)
@@ -196,13 +213,13 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
 
   const [data, meta] = await Promise.all([
     productsData.build(),
-    queryBuilder.getMeta()
-  ])
+    queryBuilder.getMeta(),
+  ]);
 
   return {
     data,
-    meta
-  }
+    meta,
+  };
 };
 
 export const CategoryServices = {
@@ -212,4 +229,4 @@ export const CategoryServices = {
   deleteProduct,
   getAllProducts,
   getAllTrashProducts,
-}
+};

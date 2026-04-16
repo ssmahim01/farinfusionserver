@@ -10,6 +10,24 @@ import { Order } from "../order/order.model";
 import { startOfDay, endOfDay } from "date-fns";
 import mongoose from "mongoose";
 
+const getTodayRangeBD = () => {
+  const now = new Date();
+
+  const bdTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
+  );
+
+  // Start of day (00:00:00)
+  const start = new Date(bdTime);
+  start.setHours(0, 0, 0, 0);
+
+  // End of day (23:59:59)
+  const end = new Date(bdTime);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+};
+
 const createLeadService = async (payload: any, user: JwtPayload) => {
   const existingLead = await Lead.findOne({ phone: payload.phone });
   const session = await mongoose.startSession();
@@ -21,14 +39,13 @@ const createLeadService = async (payload: any, user: JwtPayload) => {
     );
   }
 
-  const todayStart = startOfDay(new Date());
-  const todayEnd = endOfDay(new Date());
+  const { start, end } = getTodayRangeBD();
 
   const existingOrderToday = await Order.findOne({
     "billingDetails.phone": payload.phone,
     createdAt: {
-      $gte: todayStart,
-      $lte: todayEnd,
+      $gte: start,
+      $lte: end,
     },
     isDeleted: false,
     isPublished: true,
@@ -142,17 +159,13 @@ const getAllLeads = async (query: Record<string, string>) => {
     queryBuilder.getMeta(),
   ]);
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const { start, end } = getTodayRangeBD();
 
   const leadsWithOrderFlag = await Promise.all(
     data.map(async (lead) => {
       const hasOrder = await Order.exists({
         "billingDetails.phone": lead.phone,
-        createdAt: { $gte: todayStart, $lte: todayEnd },
+        createdAt: { $gte: start, $lte: end },
       });
 
       return {
