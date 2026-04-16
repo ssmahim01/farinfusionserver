@@ -35,6 +35,26 @@ const credentialsLogin = async (payload: Partial<IUser>) => {
     }
 }
 
+const adminChangePassword = async (
+  userId: string,
+  newPassword: string
+) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError(404, "User not found");
+  }
+
+  user.password = await bcryptjs.hash(
+    newPassword,
+    Number(envVars.BCRYPT_SALT_ROUND)
+  );
+
+  await user.save();
+
+  return null;
+};
+
 const getNewAccessToken = async (refreshToken: string) => {
    
     const newAccessToken = await createNewAccessTokenWithRefreshToken(refreshToken)
@@ -66,5 +86,6 @@ const changePassword = async (oldPassword: string, newPassword: string, decodedT
 export const AuthServices = {
     credentialsLogin,
     getNewAccessToken,
-    changePassword
+    changePassword,
+    adminChangePassword
 }
