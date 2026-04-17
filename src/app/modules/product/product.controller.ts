@@ -13,13 +13,13 @@ import { JwtPayload } from "jsonwebtoken";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
+  const user = req.user as JwtPayload;
 
   if (payload.images) {
     payload.images = Array.isArray(payload.images)
       ? payload.images
       : [payload.images];
   }
-  const user = req.user as JwtPayload;
 
   // 🔹 Handle multiple images uploaded via multer
   // if (req.files && Array.isArray(req.files)) {
