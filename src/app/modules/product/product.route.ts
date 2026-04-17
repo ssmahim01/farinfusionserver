@@ -11,8 +11,8 @@ const router = express.Router();
 router.post(
     '/create-product', 
     checkAuth(Role.ADMIN),
-    multerUpload.none(),
-    // validateRequest(createProductZodSchema),
+    multerUpload.array('images', 3),
+    validateRequest(createProductZodSchema),
     ProductControllers.createProduct
 )
 
