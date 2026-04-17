@@ -12,15 +12,21 @@ import { CommonTrashService } from "../common/CommonTrashService";
 import { JwtPayload } from "jsonwebtoken";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
+  const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
+
+  if (payload.images) {
+    payload.images = Array.isArray(payload.images)
+      ? payload.images
+      : [payload.images];
+  }
   const user = req.user as JwtPayload;
 
   // 🔹 Handle multiple images uploaded via multer
-  if (req.files && Array.isArray(req.files)) {
-    payload.images = (req.files as Express.Multer.File[]).map(
-      (file) => file.path,
-    );
-  }
+  // if (req.files && Array.isArray(req.files)) {
+  //   payload.images = (req.files as Express.Multer.File[]).map(
+  //     (file) => file.path,
+  //   );
+  // }
 
   const product = await CategoryServices.createProductService(payload, user);
 

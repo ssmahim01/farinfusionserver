@@ -39,6 +39,10 @@ const createProductService = async (
   payload.totalAddedStock = availableStock;
   payload.totalSold = 0;
 
+  if (payload.images) {
+    payload.images = payload.images;
+  }
+
   if (user.role === "MANAGER") {
     delete payload.buyingPrice;
   }
