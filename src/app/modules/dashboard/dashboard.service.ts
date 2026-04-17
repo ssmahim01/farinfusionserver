@@ -85,10 +85,10 @@ const getDashboardOverview = async (
   const totalSalary = salaryAgg[0]?.totalSalary || 0;
   let mySalary = 0;
 
-if (role === Role.GENERALSTAFF) {
-  const user = await User.findById(userId);
-  mySalary = user?.salary || 0;
-}
+  if (role === Role.GENERALSTAFF) {
+    const user = await User.findById(userId);
+    mySalary = user?.salary || 0;
+  }
 
   if (role === Role.CUSTOMER) {
     const user = await User.findById(userId);
@@ -151,6 +151,7 @@ if (role === Role.GENERALSTAFF) {
   let totalUsers = undefined;
   let totalProducts = undefined;
   let staffEarnings = undefined;
+  let topProducts = undefined;
 
   if (role === Role.ADMIN) {
     totalUsers = await User.countDocuments();
@@ -186,6 +187,47 @@ if (role === Role.GENERALSTAFF) {
     ]);
   }
 
+  topProducts = await Order.aggregate([
+    { $match: { isDeleted: false, ...queryObj } },
+    { $unwind: "$products" },
+    {
+      $group: {
+        _id: "$products.product",
+        totalSoldInPeriod: { $sum: "$products.quantity" },
+        totalRevenueInPeriod: {
+          $sum: { $multiply: ["$products.price", "$products.quantity"] },
+        },
+        orderCount: { $sum: 1 },
+      },
+    },
+    { $sort: { totalSoldInPeriod: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: "products",
+        localField: "_id",
+        foreignField: "_id",
+        as: "product",
+      },
+    },
+    { $unwind: { path: "$product", preserveNullAndEmptyArrays: false } },
+    {
+      $project: {
+        productId: "$product._id",
+        title: "$product.title",
+        price: "$product.price",
+        discountPrice: "$product.discountPrice",
+        buyingPrice: "$product.buyingPrice",
+        images: "$product.images",
+        availableStock: "$product.availableStock",
+        totalSold: "$product.totalSold",
+        totalSoldInPeriod: 1,
+        totalRevenueInPeriod: 1,
+        orderCount: 1,
+      },
+    },
+  ]);
+
   return {
     totalOrders,
     totalRevenue,
@@ -194,6 +236,7 @@ if (role === Role.GENERALSTAFF) {
     orderStats,
     staffEarnings,
     mySalary,
+    topProducts,
     totalCost,
     totalSalary,
     netProfit,
