@@ -12,7 +12,7 @@ router.post(
     '/create-product', 
     checkAuth(Role.ADMIN),
     multerUpload.none(),
-    validateRequest(createProductZodSchema),
+    // validateRequest(createProductZodSchema),
     ProductControllers.createProduct
 )
 
@@ -24,7 +24,7 @@ router.patch(
     "/:id", 
     checkAuth(Role.ADMIN), 
     multerUpload.none(),
-    validateRequest(updateProductZodSchema), 
+    // validateRequest(updateProductZodSchema), 
     ProductControllers.updateProduct
 )
 
