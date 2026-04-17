@@ -87,23 +87,28 @@ const updateProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
   }
 
-  // 🟢 Admin overwrite stock
   if (payload?.totalAddedStock !== undefined) {
     product.availableStock = payload.totalAddedStock;
   }
 
-  // 🔹 Always maintain totalAddedStock
-  product.totalAddedStock =
-    (product.availableStock ?? 0) + (product.totalSold ?? 0);
+  if (payload.images) {
+    const deletedImages = (product.images || []).filter(
+      (img) => !payload.images!.includes(img),
+    );
 
-  // 🔹 Update other fields
+    await Promise.all(
+      deletedImages.map((img) => deleteImageFromCloudinary(img)),
+    );
+
+    product.images = payload.images;
+  }
+
   const updatableFields = { ...payload };
-  delete updatableFields.availableStock; // already handled
-  Object.assign(product, updatableFields);
 
   if (user.role === "MANAGER") {
     delete payload.buyingPrice;
   }
+  Object.assign(product, updatableFields);
 
   await product.save();
   return product;

@@ -12,15 +12,21 @@ import { CommonTrashService } from "../common/CommonTrashService";
 import { JwtPayload } from "jsonwebtoken";
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
+  const payload = req.body ? JSON.parse(req.body.data) : req.body;
   const user = req.user as JwtPayload;
 
   // 🔹 Handle multiple images uploaded via multer
-  if (req.files && Array.isArray(req.files)) {
-    payload.images = (req.files as Express.Multer.File[]).map(
-      (file) => file.path,
-    );
-  }
+  // if (req.files && Array.isArray(req.files)) {
+  //   payload.images = (req.files as Express.Multer.File[]).map(
+  //     (file) => file.path,
+  //   );
+  // }
+
+    if (payload.images) {
+      payload.images = Array.isArray(payload.images)
+        ? payload.images
+        : [payload.images];
+    }
 
   const product = await CategoryServices.createProductService(payload, user);
 
@@ -104,33 +110,44 @@ const deleteProduct = catchAsync(
 const updateProduct = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const productId = req.params.id as string;
-    const payload = req.body;
     const user = req.user as JwtPayload;
 
-    // Find existing product
+    const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
+    // console.log(payload);
+
     const existingProduct = await Product.findById(productId);
 
     if (!existingProduct) {
       throw new AppError(httpStatus.NOT_FOUND, "Product not found");
     }
 
-    // If new images uploaded
-    if (req.files && Array.isArray(req.files)) {
-      const newImages = (req.files as Express.Multer.File[]).map(
-        (file) => file.path,
-      );
-
-      // delete old images
-      if (existingProduct.images?.length && newImages.length < 0) {
-        await Promise.all(
-          existingProduct.images.map((img) => deleteImageFromCloudinary(img)),
-        );
-      }
-
-      payload.images = newImages;
+    if (payload.images) {
+      payload.images = Array.isArray(payload.images)
+        ? payload.images
+        : [payload.images];
     }
 
-    const product = await CategoryServices.updateProduct(productId, payload, user);
+    // If new images uploaded
+    // if (req.files && Array.isArray(req.files)) {
+    //   const newImages = (req.files as Express.Multer.File[]).map(
+    //     (file) => file.path,
+    //   );
+
+    //   // delete old images
+    //   if (existingProduct.images?.length && newImages.length < 0) {
+    //     await Promise.all(
+    //       existingProduct.images.map((img) => deleteImageFromCloudinary(img)),
+    //     );
+    //   }
+
+    //   payload.images = newImages;
+    // }
+
+    const product = await CategoryServices.updateProduct(
+      productId,
+      payload,
+      user,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
