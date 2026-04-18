@@ -3,7 +3,7 @@ import axios from "axios";
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { Courier } from "./courier.model";
-import { CourierName, CourierStatus } from "./courier.interface";
+import { CourierDeliveryStatus, CourierName, CourierStatus } from "./courier.interface";
 import { Order } from "../order/order.model";
 import { DeliveryStatus } from "../order/order.interface";
 
@@ -30,6 +30,50 @@ const mapOrderToSteadfast = (order: any) => ({
   .join(", "),
   delivery_type: 0,
 });
+
+const trackCourier = async (trackingCode: string) => {
+  const courier = await Courier.findOne({ trackingCode });
+
+  if (!courier) {
+    throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
+  }
+
+  const res = await axios.get(
+    `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
+    { headers }
+  );
+
+  // console.log("TRACK RESPONSE:", res.data);
+
+  const apiStatus =
+    res.data?.delivery_status || res.data?.status;
+
+  if (!apiStatus) {
+    throw new AppError(400, "Invalid tracking response");
+  }
+
+  let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+
+  if (apiStatus === "delivered") {
+    mappedStatus = CourierDeliveryStatus.DELIVERED;
+  } else if (apiStatus === "cancelled") {
+    mappedStatus = CourierDeliveryStatus.CANCELLED;
+  }
+
+  if (courier?.deliveryStatus !== mappedStatus) {
+    courier.deliveryStatus = mappedStatus;
+    courier.rawResponse = res.data;
+    await courier.save();
+
+    if (mappedStatus === CourierDeliveryStatus.DELIVERED) {
+      await Order.findByIdAndUpdate(courier.order, {
+        deliveryStatus: "DELIVERED",
+      });
+    }
+  }
+
+  return courier;
+};
 
 const createCourier = async (orderId: string) => {
   const order = await Order.findById({_id: orderId}).populate("products.product");
@@ -80,15 +124,6 @@ const createCourier = async (orderId: string) => {
       error?.response?.data?.message || "Courier creation failed"
     );
   }
-};
-
-const trackCourier = async (trackingCode: string) => {
-  const res = await axios.get(
-    `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
-    { headers }
-  );
-
-  return res.data;
 };
 
 export const CourierServices = {

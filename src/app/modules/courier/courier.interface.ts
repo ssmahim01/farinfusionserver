@@ -11,6 +11,8 @@ export enum CourierStatus {
   PENDING = "PENDING",
   CREATED = "CREATED",
   DELIVERED = "DELIVERED", 
+  IN_TRANSIT = "IN_TRANSIT", 
+  CANCELLED = "CANCELLED",
   FAILED = "FAILED",
 }
 
