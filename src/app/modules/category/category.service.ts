@@ -6,6 +6,7 @@ import { categorySearchableFields } from './category.constants';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { deleteImageFromCloudinary } from '../../config/cloudinary.config';
 import mongoose from "mongoose";
+import {Product} from "../product/product.model";
 
 
 
@@ -281,11 +282,56 @@ const getAllTrashCategories = async (query: Record<string, string>) => {
     };
 };
 
+// category by products
+
+const categoryByProductService = async (
+    slug: string,
+    query: Record<string, string>
+) => {
+
+    // slug দিয়ে category খুঁজবো
+    const categoryData = await Category.findOne({ slug });
+
+    if (!categoryData) {
+        throw new AppError(httpStatus.NOT_FOUND, "Category not found");
+    }
+
+    const queryBuilder = new QueryBuilder(
+        Product.find({
+            category: categoryData._id,
+            isDeleted: false,
+        }),
+        query
+    );
+
+    const products = await queryBuilder
+        .search(categorySearchableFields)
+        .filter()
+        .sort()
+        .paginate()
+        .fields()
+        .build()
+        .populate(
+            {
+                path: "category",
+                select: "title slug logo",
+            },
+        );
+
+    const meta = await queryBuilder.getMeta();
+
+    return {
+        data: products,
+        meta,
+    };
+};
+
 export const CategoryServices = {
     createCategoryService,
     getSingleCategory,
     deleteCategory,
     updateCategory,
     getAllCategories,
-    getAllTrashCategories
+    getAllTrashCategories,
+    categoryByProductService
 }
