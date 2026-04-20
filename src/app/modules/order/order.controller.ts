@@ -165,9 +165,9 @@ const getAllScheduledOrders = catchAsync(async (req, res) => {
 
 const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
-  const payload = req.body;
+   const { orderStatus } = req.body;
 
-  const result = await OrderServices.updateOrder(orderId, payload);
+  const result = await OrderServices.updateOrderStatus(orderId, orderStatus);
 
   sendResponse(res, {
     success: true,

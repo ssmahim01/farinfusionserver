@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { ICategory } from "../category/category.interface";
 import { IProduct } from "./product.interface";
 import { JwtPayload } from "jsonwebtoken";
+import { Order } from "../order/order.model";
 
 // const createProductService = async (payload: Partial<IProduct>) => {
 //   const isProductExist = await Product.findOne({ name: payload.title });
@@ -144,18 +145,21 @@ const deleteProduct = async (id: string) => {
 };
 
 const getAllProducts = async (query: Record<string, string>) => {
-  const queryObj: any = {};
+  const orderMatch: any = {
+    orderStatus: "COMPLETED",
+    deliveryStatus: "DELIVERED",
+  };
 
   // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
+    orderMatch.createdAt = {};
 
     if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+      orderMatch.createdAt.$gte = new Date(query["createdAt[gte]"]);
     }
 
     if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+      orderMatch.createdAt.$lte = new Date(query["createdAt[lte]"]);
     }
   }
 
@@ -163,10 +167,30 @@ const getAllProducts = async (query: Record<string, string>) => {
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
 
+  const sales = await Order.aggregate([
+    { $match: orderMatch },
+    { $unwind: "$products" },
+    {
+      $group: {
+        _id: "$products.product",
+        totalSold: { $sum: "$products.quantity" },
+        totalRevenue: {
+          $sum: "$total"
+        },
+      },
+    },
+  ]);
+
+  const salesMap = new Map();
+  sales.forEach((item) => {
+    salesMap.set(item._id.toString(), item);
+  });
+
   const queryBuilder = new QueryBuilder(
-    Product.find({ isDeleted: false, ...queryObj }).populate("category"),
+    Product.find({ isDeleted: false }).populate("category"),
     query,
   );
+
   const productsData = queryBuilder
     .filter()
     .search(productSearchableFields)
@@ -179,8 +203,20 @@ const getAllProducts = async (query: Record<string, string>) => {
     queryBuilder.getMeta(),
   ]);
 
+  const finalData = data.map((product: any) => {
+    const plain = product.toObject ? product.toObject() : product;
+
+    const sale = salesMap.get(plain._id.toString());
+
+    return {
+      ...plain,
+      totalSold: sale?.totalSold || 0,
+      totalRevenue: sale?.totalRevenue || 0,
+    };
+  });
+
   return {
-    data,
+    data: finalData,
     meta,
   };
 };
