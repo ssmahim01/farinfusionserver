@@ -140,7 +140,27 @@ const getDashboardOverview = async (
   ]);
 
   const totalRevenue = revenueAgg[0]?.total || 0;
-  const netProfit = totalRevenue - totalCost - totalSalary;
+  const now = new Date();
+  const totalDaysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+  ).getDate();
+
+  let days = totalDaysInMonth;
+
+  if (query["createdAt[gte]"] && query["createdAt[lte]"]) {
+    const start = new Date(query["createdAt[gte]"]);
+    const end = new Date(query["createdAt[lte]"]);
+
+    days =
+      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  const salaryUsed = (totalSalary / totalDaysInMonth) * days;
+
+  const netProfit = salaryUsed - totalRevenue - totalCost;
+  // console.log(totalCost, totalSalary, totalRevenue);
 
   const recentOrders = await Order.find(matchCondition)
     .sort({ createdAt: -1 })
@@ -195,7 +215,7 @@ const getDashboardOverview = async (
         _id: "$products.product",
         totalSoldInPeriod: { $sum: "$products.quantity" },
         totalRevenueInPeriod: {
-          $sum: { $multiply: ["$products.price", "$products.quantity"] },
+          $sum: "$total",
         },
         orderCount: { $sum: 1 },
       },
