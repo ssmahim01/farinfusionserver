@@ -128,6 +128,22 @@ const updateCategoryTrash = catchAsync(
     }
 );
 
+// category by product
+const categoryByProduct = catchAsync(async (req: Request, res: Response) => {
+
+    const result = await CategoryServices.categoryByProductService(
+        req.params.slug as string,
+        req.query as Record<string, string>
+    );
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Get all category products successfully",
+        data: result,
+    });
+});
+
 export const CategoryControllers = {
     createCategory,
     getSingleCategory,
@@ -136,4 +152,5 @@ export const CategoryControllers = {
     getAllCategories,
     getAllTrashCategories,
     updateCategoryTrash,
+    categoryByProduct
 }
