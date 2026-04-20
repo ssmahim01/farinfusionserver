@@ -15,12 +15,15 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { orderSearchableFields } from "./order.constants";
 import { Role } from "../user/user.interface";
 import { CourierServices } from "../courier/courier.service";
+import { Coupon } from "../coupon/coupon.model";
+import { CouponServices } from "../coupon/coupon.service";
 
 interface TCreateOrderPayload {
   orderType: OrderType;
   paymentMethod?: PaymentMethod;
   total: number;
   discount?: number;
+  couponCode?: string;
   scheduleType?: string;
   scheduledAt?: Date;
   isPublished?: boolean;
@@ -185,6 +188,20 @@ const createOrder = async (payload: TCreateOrderPayload) => {
     };
 
     // console.log("ORDER PRODUCTS:", JSON.stringify(orderDoc.products, null, 2));
+
+    if (payload.couponCode) {
+      const coupon = await CouponServices.applyCoupon(
+        payload.couponCode,
+        calculatedOrder.totalPrice,
+      );
+
+      orderDoc.discount = coupon.discount;
+      orderDoc.total = coupon.finalTotal;
+
+      await Coupon.findByIdAndUpdate(coupon.couponId, {
+        $inc: { usedCount: 1 },
+      });
+    }
 
     const isUserExist = await User.findOne({
       email: payload?.billingDetails?.email,
@@ -491,17 +508,16 @@ const getAllOrders = async (query: Record<string, string>) => {
     .populate("payment")
     .populate("products.product");
 
-    
-    const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
-    await Promise.all(
-      data.map(async (order: any) => {
-        if (order.trackingNumber) {
-          try {
-            await CourierServices.trackCourier(order.trackingNumber);
-          } catch {}
-        }
-      }),
-    );
+  const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
+  await Promise.all(
+    data.map(async (order: any) => {
+      if (order.trackingNumber) {
+        try {
+          await CourierServices.trackCourier(order.trackingNumber);
+        } catch {}
+      }
+    }),
+  );
   return { data, meta, stats: formattedStats };
 };
 
