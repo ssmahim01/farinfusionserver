@@ -208,7 +208,14 @@ const getDashboardOverview = async (
   }
 
   topProducts = await Order.aggregate([
-    { $match: { isDeleted: false, ...queryObj } },
+    {
+      $match: {
+        orderStatus: "COMPLETED",
+        deliveryStatus: "DELIVERED",
+        isDeleted: false,
+        ...queryObj,
+      },
+    },
     { $unwind: "$products" },
     {
       $group: {
@@ -240,7 +247,7 @@ const getDashboardOverview = async (
         buyingPrice: "$product.buyingPrice",
         images: "$product.images",
         availableStock: "$product.availableStock",
-        totalSold: "$product.totalSold",
+        totalSold: { $sum: "$products.quantity" },
         totalSoldInPeriod: 1,
         totalRevenueInPeriod: 1,
         orderCount: 1,
