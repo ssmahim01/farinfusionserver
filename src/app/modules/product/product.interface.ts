@@ -38,6 +38,8 @@ export interface IProduct {
         date: Date;
     }[];
 
+    isFeatured: boolean
+
     // Description
     description: string;            // Full product description
 

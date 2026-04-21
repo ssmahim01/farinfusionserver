@@ -39,6 +39,7 @@ const createProductService = async (
   payload.availableStock = availableStock;
   payload.totalAddedStock = availableStock;
   payload.totalSold = 0;
+  payload.isFeatured = false;
 
   if (user.role === "MANAGER") {
     delete payload.buyingPrice;
@@ -175,7 +176,7 @@ const getAllProducts = async (query: Record<string, string>) => {
         _id: "$products.product",
         totalSold: { $sum: "$products.quantity" },
         totalRevenue: {
-          $sum: "$total"
+          $sum: "$total",
         },
       },
     },
