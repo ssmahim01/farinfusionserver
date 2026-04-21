@@ -24,7 +24,6 @@ const applyCoupon = async (code: string, total: number) => {
   const coupon = await Coupon.findOne({
     code: code.toUpperCase(),
     isActive: true,
-    isDeleted: false,
   });
 
   if (!coupon) {
@@ -67,7 +66,7 @@ const applyCoupon = async (code: string, total: number) => {
 
 const getAllCoupons = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(
-    Coupon.find({ isDeleted: false }),
+    Coupon.find({ isActive: true }),
     query,
   );
 
