@@ -3,7 +3,11 @@ import axios from "axios";
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/appError";
 import { Courier } from "./courier.model";
-import { CourierDeliveryStatus, CourierName, CourierStatus } from "./courier.interface";
+import {
+  CourierDeliveryStatus,
+  CourierName,
+  CourierStatus,
+} from "./courier.interface";
 import { Order } from "../order/order.model";
 import { DeliveryStatus } from "../order/order.interface";
 
@@ -22,12 +26,12 @@ const mapOrderToSteadfast = (order: any) => ({
   recipient_address: order.billingDetails?.address,
   cod_amount: order.total,
   note: order?.note || "Auto generated order",
- item_description: order.products
-  ?.map((p: any) => {
-    const name = p.product?.title || "Unknown Product";
-    return `${name} x${p.quantity}`;
-  })
-  .join(", "),
+  item_description: order.products
+    ?.map((p: any) => {
+      const name = p.product?.title || "Unknown Product";
+      return `${name} x${p.quantity}`;
+    })
+    .join(", "),
   delivery_type: 0,
 });
 
@@ -40,13 +44,12 @@ const trackCourier = async (trackingCode: string) => {
 
   const res = await axios.get(
     `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
-    { headers }
+    { headers },
   );
 
   // console.log("TRACK RESPONSE:", res.data);
 
-  const apiStatus =
-    res.data?.delivery_status || res.data?.status;
+  const apiStatus = res.data?.delivery_status || res.data?.status;
 
   if (!apiStatus) {
     throw new AppError(400, "Invalid tracking response");
@@ -68,6 +71,7 @@ const trackCourier = async (trackingCode: string) => {
     if (mappedStatus === CourierDeliveryStatus.DELIVERED) {
       await Order.findByIdAndUpdate(courier.order, {
         deliveryStatus: "DELIVERED",
+        orderStatus: "COMPLETED",
       });
     }
   }
@@ -76,7 +80,9 @@ const trackCourier = async (trackingCode: string) => {
 };
 
 const createCourier = async (orderId: string) => {
-  const order = await Order.findById({_id: orderId}).populate("products.product");
+  const order = await Order.findById({ _id: orderId }).populate(
+    "products.product",
+  );
 
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
@@ -87,11 +93,9 @@ const createCourier = async (orderId: string) => {
   const payload = mapOrderToSteadfast(order);
 
   try {
-    const res = await axios.post(
-      `${BASE_URL}/create_order`,
-      payload,
-      { headers }
-    );
+    const res = await axios.post(`${BASE_URL}/create_order`, payload, {
+      headers,
+    });
 
     const consignment = res.data?.consignment;
 
@@ -121,7 +125,7 @@ const createCourier = async (orderId: string) => {
 
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      error?.response?.data?.message || "Courier creation failed"
+      error?.response?.data?.message || "Courier creation failed",
     );
   }
 };
