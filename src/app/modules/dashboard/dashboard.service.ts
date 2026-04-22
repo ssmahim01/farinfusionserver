@@ -36,7 +36,7 @@ const getDashboardOverview = async (
     ...queryObj,
   };
 
-  const costAgg = await Order.aggregate([
+  const productCostAgg = await Order.aggregate([
     { $match: { ...matchCondition, orderStatus: "COMPLETED" } },
     { $unwind: "$products" },
     {
@@ -44,10 +44,10 @@ const getDashboardOverview = async (
         from: "products",
         localField: "products.product",
         foreignField: "_id",
-        as: "productInfo",
+        as: "productData",
       },
     },
-    { $unwind: "$productInfo" },
+    { $unwind: "$productData" },
     {
       $group: {
         _id: null,
@@ -55,7 +55,7 @@ const getDashboardOverview = async (
           $sum: {
             $multiply: [
               "$products.quantity",
-              { $ifNull: ["$productInfo.buyingPrice", 0] },
+              { $ifNull: ["$productData.buyingPrice", 0] },
             ],
           },
         },
@@ -63,7 +63,7 @@ const getDashboardOverview = async (
     },
   ]);
 
-  const totalCost = costAgg[0]?.totalCost || 0;
+  const totalProductCost = productCostAgg[0]?.totalCost || 0;
 
   const salaryAgg = await User.aggregate([
     {
@@ -139,6 +139,31 @@ const getDashboardOverview = async (
     },
   ]);
 
+  const startDate = query["createdAt[gte]"]
+    ? new Date(query["createdAt[gte]"])
+    : new Date(new Date().setDate(1));
+
+  const endDate = query["createdAt[lte]"]
+    ? new Date(query["createdAt[lte]"])
+    : new Date();
+
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+
+  const staffUsers = await User.find({
+    role: { $in: ["ADMIN", "MANAGER", "MODERATOR", "TELLICELSS"] },
+    isDeleted: false,
+  });
+
+  const totalMonthlySalary = staffUsers.reduce(
+    (sum, user) => sum + (user.salary || user.commissionSalary ||  0),
+    0,
+  );
+
+  const dailySalary = totalMonthlySalary / 30;
+
+  const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  const staffSalaryForPeriod = dailySalary * totalDays;
+
   const totalRevenue = revenueAgg[0]?.total || 0;
   const now = new Date();
   const totalDaysInMonth = new Date(
@@ -157,10 +182,10 @@ const getDashboardOverview = async (
       Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   }
 
-  const salaryUsed = (totalSalary / totalDaysInMonth) * days;
-
-  const netProfit = salaryUsed - totalRevenue - totalCost;
-  // console.log(totalCost, totalSalary, totalRevenue);
+  // const salaryUsed = (totalSalary / totalDaysInMonth) * days;
+  const totalCost = totalProductCost + staffSalaryForPeriod;
+  const netProfit = totalCost - totalRevenue;
+  // console.log(staffSalaryForPeriod, totalProductCost, totalRevenue);
 
   const recentOrders = await Order.find(matchCondition)
     .sort({ createdAt: -1 })
@@ -175,10 +200,17 @@ const getDashboardOverview = async (
 
   if (role === Role.ADMIN) {
     totalUsers = await User.countDocuments();
-    totalProducts = await Product.countDocuments();
+    totalProducts = await Product.countDocuments({ isDeleted: false });
 
     staffEarnings = await Order.aggregate([
-      { $match: { isDeleted: false } },
+      {
+        $match: {
+          isDeleted: false,
+          orderStatus: "COMPLETED",
+          deliveryStatus: "DELIVERED",
+          ...queryObj,
+        },
+      },
       {
         $group: {
           _id: "$seller",
@@ -264,8 +296,8 @@ const getDashboardOverview = async (
     staffEarnings,
     mySalary,
     topProducts,
-    totalCost,
-    totalSalary,
+    totalCost: totalProductCost,
+    totalSalary: staffSalaryForPeriod,
     netProfit,
     recentOrders,
     role,
