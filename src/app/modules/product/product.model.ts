@@ -105,7 +105,7 @@ const productSchema = new Schema<IProduct>(
     },
     isFeatured: {
       type: Boolean,
-      required: false,
+      default: false,
     },
   },
   {

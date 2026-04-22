@@ -158,6 +158,25 @@ const updateProduct = catchAsync(
   },
 );
 
+const toggleFeatured = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const product = await Product.findById(id);
+  if (!product) {
+    throw new AppError(404, "Product not found");
+  }
+
+  product.isFeatured = !product.isFeatured;
+  await product.save();
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Featured status updated",
+    data: product,
+  });
+});
+
 const getAllProducts = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
@@ -214,5 +233,6 @@ export const ProductControllers = {
   updateProduct,
   getAllProducts,
   getAllTrashProducts,
+  toggleFeatured,
   updateProductTrash,
 };
