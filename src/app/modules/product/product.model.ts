@@ -107,6 +107,10 @@ const productSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    isCusFavorite: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

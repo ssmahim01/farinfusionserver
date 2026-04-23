@@ -39,6 +39,7 @@ export interface IProduct {
     }[];
 
     isFeatured: boolean
+    isCusFavorite?: boolean
 
     // Description
     description: string;            // Full product description
