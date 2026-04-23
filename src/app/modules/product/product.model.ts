@@ -37,6 +37,10 @@ const productSchema = new Schema<IProduct>(
       unique: true,
       index: true,
     },
+    isCusFavorite: {
+      type: Boolean,
+      default: false,
+    },
     brand: {
       type: Types.ObjectId,
       ref: "Brand",
@@ -62,6 +66,7 @@ const productSchema = new Schema<IProduct>(
     buyingPrice: {
       type: Number,
     },
+
     // Stock
     totalAddedStock: {
       type: Number,

@@ -7,6 +7,7 @@ export enum ProductStatus {
 
 export interface IProduct {
     _id?: Types.ObjectId;
+     isCusFavorite?: boolean
 
     // Basic Info
     title: string;                  // e.g., "Aveeno Baby Sunscreen"
