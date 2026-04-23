@@ -155,7 +155,7 @@ const getDashboardOverview = async (
   });
 
   const totalMonthlySalary = staffUsers.reduce(
-    (sum, user) => sum + (user.salary || user.commissionSalary ||  0),
+    (sum, user) => sum + (user.salary || user.commissionSalary || 0),
     0,
   );
 
@@ -198,45 +198,47 @@ const getDashboardOverview = async (
   let staffEarnings = undefined;
   let topProducts = undefined;
 
-  if (role === Role.ADMIN) {
+  if (role === Role.ADMIN || role === Role.MANAGER) {
     totalUsers = await User.countDocuments();
     totalProducts = await Product.countDocuments({ isDeleted: false });
 
-    staffEarnings = await Order.aggregate([
-      {
-        $match: {
-          isDeleted: false,
-          orderStatus: "COMPLETED",
-          deliveryStatus: "DELIVERED",
-          ...queryObj,
+    if (role === Role.ADMIN) {
+      staffEarnings = await Order.aggregate([
+        {
+          $match: {
+            isDeleted: false,
+            orderStatus: "COMPLETED",
+            deliveryStatus: "DELIVERED",
+            ...queryObj,
+          },
         },
-      },
-      {
-        $group: {
-          _id: "$seller",
-          totalOrders: { $sum: 1 },
-          totalEarnings: { $sum: "$total" },
+        {
+          $group: {
+            _id: "$seller",
+            totalOrders: { $sum: 1 },
+            totalEarnings: { $sum: "$total" },
+          },
         },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "seller",
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "seller",
+          },
         },
-      },
-      { $unwind: "$seller" },
-      {
-        $project: {
-          sellerId: "$seller._id",
-          sellerName: "$seller.name",
-          email: "$seller.email",
-          totalOrders: 1,
-          totalEarnings: 1,
+        { $unwind: "$seller" },
+        {
+          $project: {
+            sellerId: "$seller._id",
+            sellerName: "$seller.name",
+            email: "$seller.email",
+            totalOrders: 1,
+            totalEarnings: 1,
+          },
         },
-      },
-    ]);
+      ]);
+    }
   }
 
   topProducts = await Order.aggregate([
