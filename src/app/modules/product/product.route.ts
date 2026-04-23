@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post(
   "/create-product",
-  checkAuth(Role.ADMIN),
+  checkAuth(Role.ADMIN, Role.MANAGER),
   multerUpload.none(),
   // validateRequest(createProductZodSchema),
   ProductControllers.createProduct,
@@ -30,7 +30,7 @@ router.patch(
 );
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN),
+  checkAuth(Role.ADMIN, Role.MANAGER),
   multerUpload.none(),
   // validateRequest(updateProductZodSchema),
   ProductControllers.updateProduct,
