@@ -96,6 +96,16 @@ const updateUser = async (
     payload.password = hashedPassword;
   }
 
+  if (payload.permissions) {
+    if (typeof payload.permissions === "string") {
+      try {
+        payload.permissions = JSON.parse(payload.permissions);
+      } catch {
+        throw new AppError(400, "Invalid permissions format");
+      }
+    }
+  }
+
   // No restrictions for Admin — directly update
   const updatedUser = await User.findByIdAndUpdate(userId, payload, {
     new: true,
