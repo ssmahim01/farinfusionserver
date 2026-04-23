@@ -11,6 +11,12 @@ const userSchema = new Schema<IUser>(
       ref: "User",
       index: true,
     },
+    permissions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Permission",
+      },
+    ],
     role: {
       type: String,
       enum: Object.values(Role),

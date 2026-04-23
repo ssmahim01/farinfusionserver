@@ -25,6 +25,7 @@ export interface IUser {
   address: string;
   picture?: string;
   isActive?: IsActive;
+  permissions?: Types.ObjectId[];
   isVerified?: boolean;
   isDeleted?: boolean;
   salary?: number;
