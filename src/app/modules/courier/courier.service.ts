@@ -74,6 +74,12 @@ const trackCourier = async (trackingCode: string) => {
         orderStatus: "COMPLETED",
       });
     }
+    if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
+      await Order.findByIdAndUpdate(courier.order, {
+        deliveryStatus: "CANCELLED",
+        orderStatus: "CANCELLED",
+      });
+    }
   }
 
   return courier;

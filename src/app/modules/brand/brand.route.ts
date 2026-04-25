@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post(
     '/create-brand', 
-    checkAuth(Role.ADMIN),
+    checkAuth(Role.ADMIN, Role.MANAGER),
     multerUpload.single('image'),
     validateRequest(createBrandZodSchema), 
     BrandControllers.createBrand
@@ -22,15 +22,15 @@ router.post(
 router.get("/all-brands", BrandControllers.getAllBrands)
 router.get("/all-trash-brands", BrandControllers.getAllTrashBrands)
 router.get("/:slug", BrandControllers.getSingleBrand)
-router.delete("/:id", checkAuth(Role.ADMIN), BrandControllers.deleteBrand)
+router.delete("/:id", checkAuth(Role.ADMIN, Role.MANAGER), BrandControllers.deleteBrand)
 router.patch(
     "/:id", 
-    checkAuth(Role.ADMIN), 
+    checkAuth(Role.ADMIN, Role.MANAGER), 
     multerUpload.single('image'),
     validateRequest(updateBrandZodSchema), 
     BrandControllers.updateBrand
 )
 // trash service added
-router.post("/brand-trash/:id", checkAuth(Role.ADMIN), BrandControllers.updateBrandTrash)
+router.post("/brand-trash/:id", checkAuth(Role.ADMIN, Role.MANAGER), BrandControllers.updateBrandTrash)
 
 export const brandRoutes = router;

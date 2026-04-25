@@ -7,7 +7,6 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { leadSearchableFields } from "./lead.constants";
 import { JwtPayload } from "jsonwebtoken";
 import { Order } from "../order/order.model";
-import { startOfDay, endOfDay } from "date-fns";
 import mongoose from "mongoose";
 
 const getTodayRangeBD = () => {
@@ -95,6 +94,37 @@ const updateLeadService = async (
     new: true,
   });
   return updatedLead;
+};
+
+const checkFraudByPhone = async (phone: string) => {
+  const orders = await Order.find({
+    "billingDetails.phone": phone,
+  });
+
+  const total = orders.length;
+
+  const delivered = orders.filter(
+    (o) => o.deliveryStatus === "DELIVERED",
+  ).length;
+
+  const cancelled = orders.filter((o) => o.orderStatus === "CANCELLED").length;
+
+  const successRate = total ? (delivered / total) * 100 : 0;
+  const cancelRate = total ? (cancelled / total) * 100 : 0;
+
+  let risk = "SAFE";
+
+  if (cancelRate > 50) risk = "HIGH";
+  else if (cancelRate > 25) risk = "MEDIUM";
+
+  return {
+    total,
+    delivered,
+    cancelled,
+    successRate: Number(successRate.toFixed(1)),
+    cancelRate: Number(cancelRate.toFixed(1)),
+    risk,
+  };
 };
 
 const getSingleLead = async (id: string) => {
@@ -228,6 +258,7 @@ export const LeadServices = {
   getSingleLead,
   updateLeadService,
   deleteLead,
+  checkFraudByPhone,
   getAllLeads,
   getAllTrashLeads,
 };

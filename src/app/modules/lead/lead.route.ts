@@ -10,23 +10,45 @@ import { LeadControllers } from "./lead.controller";
 const router = express.Router();
 
 router.post(
-    '/create-lead', 
-    checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
-    validateRequest(createLeadZodSchema), 
-    LeadControllers.createLead
-)
+  "/create-lead",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  validateRequest(createLeadZodSchema),
+  LeadControllers.createLead,
+);
 
-router.get("/all-leads", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.getAllLeads)
-router.get("/all-trash-leads", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.getAllTrashLeads)
-router.get("/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.getSingleLead)
-router.delete("/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.deleteLead)
+router.get("/fraud-check", LeadControllers.checkFraud);
+
+router.get(
+  "/all-leads",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.getAllLeads,
+);
+router.get(
+  "/all-trash-leads",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.getAllTrashLeads,
+);
+router.get(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.getSingleLead,
+);
+router.delete(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.deleteLead,
+);
 router.patch(
-    "/:id", 
-    validateRequest(updateLeadZodSchema), 
-    checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR,Role.TELLICELSS),
-    LeadControllers.updateLead
-)
+  "/:id",
+  validateRequest(updateLeadZodSchema),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.updateLead,
+);
 
-router.post("/lead-trash/:id", checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS), LeadControllers.updateLeadTrash)
+router.post(
+  "/lead-trash/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  LeadControllers.updateLeadTrash,
+);
 
 export const leadRoutes = router;

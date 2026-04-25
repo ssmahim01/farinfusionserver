@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post(
     '/create-category', 
-    checkAuth(Role.ADMIN),
+    checkAuth(Role.ADMIN, Role.MANAGER),
     multerUpload.single('image'),
     validateRequest(createCategoryZodSchema), 
     CategoryControllers.createCategory
@@ -19,17 +19,17 @@ router.post(
 router.get("/all-categories", CategoryControllers.getAllCategories)
 router.get("/all-trash-categories", CategoryControllers.getAllTrashCategories)
 router.get("/:slug", CategoryControllers.getSingleCategory)
-router.delete("/:id", checkAuth(Role.ADMIN), CategoryControllers.deleteCategory)
+router.delete("/:id", checkAuth(Role.ADMIN, Role.MANAGER), CategoryControllers.deleteCategory)
 router.patch(
     "/:id", 
-    checkAuth(Role.ADMIN), 
+    checkAuth(Role.ADMIN, Role.MANAGER), 
     multerUpload.single('image'),
     validateRequest(updateCategoryZodSchema), 
     CategoryControllers.updateCategory
 )
 
 // trash category
-router.post("/category-trash/:id", checkAuth(Role.ADMIN), CategoryControllers.updateCategoryTrash)
+router.post("/category-trash/:id", checkAuth(Role.ADMIN, Role.MANAGER), CategoryControllers.updateCategoryTrash)
 
 router.get("/category-by-product/:slug", CategoryControllers.categoryByProduct)
 
