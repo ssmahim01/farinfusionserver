@@ -39,7 +39,7 @@ router.patch(
 // trash update
 router.post(
   "/product-trash/:id",
-  checkAuth(Role.ADMIN),
+  checkAuth(Role.ADMIN, Role.MANAGER),
   ProductControllers.updateProductTrash,
 );
 export const productRoutes = router;
