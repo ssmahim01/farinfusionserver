@@ -85,8 +85,47 @@ const getAllCoupons = async (query: Record<string, string>) => {
   return { data, meta };
 };
 
+const updateCoupon = async (
+  id: string,
+  payload: Partial<ICoupon>
+) => {
+  const coupon = await Coupon.findById(id);
+
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, "Coupon not found");
+  }
+
+  if (payload.code) {
+    payload.code = payload.code.toUpperCase();
+  }
+
+  const updated = await Coupon.findByIdAndUpdate(id, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return updated;
+};
+
+const deleteCoupon = async (id: string) => {
+  const coupon = await Coupon.findById(id);
+
+  if (!coupon) {
+    throw new AppError(httpStatus.NOT_FOUND, "Coupon not found");
+  }
+
+  coupon.isDeleted = true;
+  coupon.isActive = false;
+
+  await coupon.save();
+
+  return null;
+};
+
 export const CouponServices = {
   createCoupon,
   applyCoupon,
+  updateCoupon,
+  deleteCoupon,
   getAllCoupons,
 };

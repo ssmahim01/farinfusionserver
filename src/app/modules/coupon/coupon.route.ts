@@ -29,4 +29,16 @@ router.get(
   CouponControllers.getAllCoupons
 );
 
+router.patch(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  CouponControllers.updateCoupon
+);
+
+router.delete(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  CouponControllers.deleteCoupon
+);
+
 export const couponRoutes = router;
