@@ -8,6 +8,7 @@ import { leadSearchableFields } from "./lead.constants";
 import { JwtPayload } from "jsonwebtoken";
 import { Order } from "../order/order.model";
 import mongoose from "mongoose";
+import axios from "axios";
 
 const getTodayRangeBD = () => {
   const now = new Date();
@@ -97,34 +98,81 @@ const updateLeadService = async (
 };
 
 const checkFraudByPhone = async (phone: string) => {
-  const orders = await Order.find({
-    "billingDetails.phone": phone,
-  });
+  if (!phone) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Phone is required");
+  }
 
-  const total = orders.length;
+  const normalizedPhone = phone.startsWith("880")
+    ? "0" + phone.slice(3)
+    : phone;
 
-  const delivered = orders.filter(
-    (o) => o.deliveryStatus === "DELIVERED",
-  ).length;
+  try {
+    const response = await axios.get(
+      `${process.env.STEADFAST_BASE_URL}/fraud-check`,
+      {
+        params: { phone: normalizedPhone },
+        headers: {
+          Authorization: `Bearer ${process.env.STEADFAST_API_KEY}`, 
+        },
+      }
+    );
 
-  const cancelled = orders.filter((o) => o.orderStatus === "CANCELLED").length;
+    const data = response.data;
 
-  const successRate = total ? (delivered / total) * 100 : 0;
-  const cancelRate = total ? (cancelled / total) * 100 : 0;
+    const delivered = data?.total_delivered || 0;
+    const cancelled = data?.total_cancelled || 0;
+    const total = delivered + cancelled;
 
-  let risk = "SAFE";
+    const successRate = total ? (delivered / total) * 100 : 0;
+    const cancelRate = total ? (cancelled / total) * 100 : 0;
 
-  if (cancelRate > 50) risk = "HIGH";
-  else if (cancelRate > 25) risk = "MEDIUM";
+    let risk = "SAFE";
+    if (cancelRate > 50) risk = "HIGH";
+    else if (cancelRate > 25) risk = "MEDIUM";
 
-  return {
-    total,
-    delivered,
-    cancelled,
-    successRate: Number(successRate.toFixed(1)),
-    cancelRate: Number(cancelRate.toFixed(1)),
-    risk,
-  };
+    return {
+      total,
+      delivered,
+      cancelled,
+      successRate: Number(successRate.toFixed(1)),
+      cancelRate: Number(cancelRate.toFixed(1)),
+      risk,
+    };
+  } catch (error: any) {
+    console.warn("Steadfast API failed → using local DB");
+
+    const orders = await Order.find({
+      "billingDetails.phone": normalizedPhone,
+      isDeleted: false,
+      isPublished: true,
+    });
+
+    const total = orders.length;
+
+    const delivered = orders.filter(
+      (o) => o.deliveryStatus === "DELIVERED"
+    ).length;
+
+    const cancelled = orders.filter(
+      (o) => o.orderStatus === "CANCELLED"
+    ).length;
+
+    const successRate = total ? (delivered / total) * 100 : 0;
+    const cancelRate = total ? (cancelled / total) * 100 : 0;
+
+    let risk = "SAFE";
+    if (cancelRate > 50) risk = "HIGH";
+    else if (cancelRate > 25) risk = "MEDIUM";
+
+    return {
+      total,
+      delivered,
+      cancelled,
+      successRate: Number(successRate.toFixed(1)),
+      cancelRate: Number(cancelRate.toFixed(1)),
+      risk,
+    };
+  }
 };
 
 const getSingleLead = async (id: string) => {
