@@ -63,7 +63,7 @@ const getDashboardOverview = async (
     },
   ]);
 
-  const totalProductCost = productCostAgg[0]?.totalCost || 0;
+  // const totalProductCost = productCostAgg[0]?.totalCost || 0;
 
   const salaryAgg = await User.aggregate([
     {
@@ -155,7 +155,7 @@ const getDashboardOverview = async (
   });
 
   const totalMonthlySalary = staffUsers.reduce(
-    (sum, user) => sum + (user.salary || user.commissionSalary ||  0),
+    (sum, user) => sum + (user.salary || user.commissionSalary || 0),
     0,
   );
 
@@ -164,7 +164,7 @@ const getDashboardOverview = async (
   const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   const staffSalaryForPeriod = dailySalary * totalDays;
 
-  const totalRevenue = revenueAgg[0]?.total || 0;
+  // const totalRevenue = revenueAgg[0]?.total || 0;
   const now = new Date();
   const totalDaysInMonth = new Date(
     now.getFullYear(),
@@ -183,8 +183,11 @@ const getDashboardOverview = async (
   }
 
   // const salaryUsed = (totalSalary / totalDaysInMonth) * days;
-  const totalCost = totalProductCost + staffSalaryForPeriod;
-  const netProfit = totalCost - totalRevenue;
+  const totalProductCost = productCostAgg[0]?.totalCost || 0;
+  const totalRevenue = revenueAgg[0]?.total || 0;
+
+  const totalCost = totalProductCost;
+  const netProfit = totalRevenue - totalCost;
   // console.log(staffSalaryForPeriod, totalProductCost, totalRevenue);
 
   const recentOrders = await Order.find(matchCondition)
