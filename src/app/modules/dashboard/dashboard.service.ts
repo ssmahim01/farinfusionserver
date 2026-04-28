@@ -197,6 +197,7 @@ const getDashboardOverview = async (
   let totalProducts = undefined;
   let staffEarnings = undefined;
   let topProducts = undefined;
+  let confirmedProducts = undefined;
 
   if (role === Role.ADMIN) {
     totalUsers = await User.countDocuments();
@@ -260,7 +261,52 @@ const getDashboardOverview = async (
       },
     },
     { $sort: { totalSoldInPeriod: -1 } },
-    { $limit: 10 },
+    {
+      $lookup: {
+        from: "products",
+        localField: "_id",
+        foreignField: "_id",
+        as: "product",
+      },
+    },
+    { $unwind: { path: "$product", preserveNullAndEmptyArrays: false } },
+    {
+      $project: {
+        productId: "$product._id",
+        title: "$product.title",
+        price: "$product.price",
+        discountPrice: "$product.discountPrice",
+        buyingPrice: "$product.buyingPrice",
+        images: "$product.images",
+        availableStock: "$product.availableStock",
+        totalSold: { $sum: "$products.quantity" },
+        totalSoldInPeriod: 1,
+        totalRevenueInPeriod: 1,
+        orderCount: 1,
+      },
+    },
+  ]);
+
+  confirmedProducts = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: "CONFIRMED",
+        isDeleted: false,
+        ...queryObj,
+      },
+    },
+    { $unwind: "$products" },
+    {
+      $group: {
+        _id: "$products.product",
+        totalSoldInPeriod: { $sum: "$products.quantity" },
+        totalRevenueInPeriod: {
+          $sum: "$total",
+        },
+        orderCount: { $sum: 1 },
+      },
+    },
+    { $sort: { totalSoldInPeriod: -1 } },
     {
       $lookup: {
         from: "products",
@@ -296,6 +342,7 @@ const getDashboardOverview = async (
     staffEarnings,
     mySalary,
     topProducts,
+    confirmedProducts,
     totalCost: totalProductCost,
     totalSalary: staffSalaryForPeriod,
     netProfit,
