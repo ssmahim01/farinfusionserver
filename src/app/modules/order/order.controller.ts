@@ -43,6 +43,7 @@ const getAllOrders = catchAsync(async (req: Request, res: Response) => {
     message: "All Orders Retrieved Successfully",
     meta: result.meta,
     data: result.data,
+    stats: result.stats,
   });
 });
 
@@ -160,12 +161,13 @@ const getAllScheduledOrders = catchAsync(async (req, res) => {
     message: "Scheduled orders retrieved",
     data: result.data,
     meta: result.meta,
+    stats: result.stats,
   });
 });
 
 const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
-   const { orderStatus } = req.body;
+  const { orderStatus } = req.body;
 
   const result = await OrderServices.updateOrderStatus(orderId, orderStatus);
 

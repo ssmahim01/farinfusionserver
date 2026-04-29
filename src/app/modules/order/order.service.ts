@@ -554,9 +554,37 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
     .populate("seller", "name email role")
     .populate("products.product");
 
+    const stats = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        ...queryObj,
+      },
+    },
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const formattedStats = {
+    total: 0,
+    PENDING: 0,
+    CONFIRMED: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+  };
+
+  stats.forEach((item) => {
+    formattedStats[item._id as keyof typeof formattedStats] = item.count;
+    formattedStats.total += item.count;
+  });
+
   const meta = await queryBuilder.getMeta();
 
-  return { data, meta };
+  return { data, meta, stats: formattedStats };
 };
 
 const getMyScheduledOrders = async (
