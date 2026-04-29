@@ -219,6 +219,17 @@ const getDashboardOverview = async (
         $group: {
           _id: "$seller",
           totalOrders: { $sum: 1 },
+
+          productRevenue: {
+            $sum: {
+              $subtract: ["$total", { $ifNull: ["$shippingCost", 0] }],
+            },
+          },
+
+          shippingCost: {
+            $sum: { $ifNull: ["$shippingCost", 0] },
+          },
+
           totalEarnings: { $sum: "$total" },
         },
       },
@@ -237,6 +248,8 @@ const getDashboardOverview = async (
           sellerName: "$seller.name",
           email: "$seller.email",
           totalOrders: 1,
+          productRevenue: 1,
+          shippingCost: 1,
           totalEarnings: 1,
         },
       },
@@ -253,17 +266,25 @@ const getDashboardOverview = async (
       },
     },
     { $unwind: "$products" },
+
     {
       $group: {
         _id: "$products.product",
+
         totalSoldInPeriod: { $sum: "$products.quantity" },
+
         totalRevenueInPeriod: {
-          $sum: "$total",
+          $sum: {
+            $multiply: ["$products.quantity", "$products.price"],
+          },
         },
+
         orderCount: { $sum: 1 },
       },
     },
+
     { $sort: { totalSoldInPeriod: -1 } },
+
     {
       $lookup: {
         from: "products",
@@ -272,17 +293,16 @@ const getDashboardOverview = async (
         as: "product",
       },
     },
-    { $unwind: { path: "$product", preserveNullAndEmptyArrays: false } },
+    { $unwind: "$product" },
+
     {
       $project: {
         productId: "$product._id",
         title: "$product.title",
         price: "$product.price",
-        discountPrice: "$product.discountPrice",
         buyingPrice: "$product.buyingPrice",
         images: "$product.images",
         availableStock: "$product.availableStock",
-        totalSold: { $sum: "$products.quantity" },
         totalSoldInPeriod: 1,
         totalRevenueInPeriod: 1,
         orderCount: 1,
