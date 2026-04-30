@@ -134,11 +134,14 @@ const getDashboardOverview = async (
     {
       $group: {
         _id: null,
-        total: { $sum: "$total" },
+        total: {
+          $sum: {
+            $subtract: ["$total", { $ifNull: ["$shippingCost", 0] }],
+          },
+        },
       },
     },
   ]);
-
   const startDate = query["createdAt[gte]"]
     ? new Date(query["createdAt[gte]"])
     : new Date(new Date().setDate(1));
@@ -184,9 +187,10 @@ const getDashboardOverview = async (
 
   // const salaryUsed = (totalSalary / totalDaysInMonth) * days;
   const totalProductCost = productCostAgg[0]?.totalCost || 0;
-  const totalRevenue = revenueAgg[0]?.total || 0;
 
+  const totalRevenue = revenueAgg[0]?.total || 0;
   const totalCost = totalProductCost;
+
   const netProfit = totalRevenue - totalCost;
   // console.log(staffSalaryForPeriod, totalProductCost, totalRevenue);
 
@@ -210,48 +214,72 @@ const getDashboardOverview = async (
       {
         $match: {
           isDeleted: false,
+          isPublished: true,
           orderStatus: "COMPLETED",
           deliveryStatus: "DELIVERED",
           ...queryObj,
         },
       },
+
       {
-        $group: {
-          _id: "$seller",
-          totalOrders: { $sum: 1 },
-
-          productRevenue: {
-            $sum: {
-              $subtract: ["$total", { $ifNull: ["$shippingCost", 0] }],
-            },
+        $addFields: {
+          orderValue: {
+            $max: [
+              {
+                $subtract: ["$total", { $ifNull: ["$shippingCost", 0] }],
+              },
+              0,
+            ],
           },
-
-          shippingCost: {
-            $sum: { $ifNull: ["$shippingCost", 0] },
-          },
-
-          totalEarnings: { $sum: "$total" },
         },
       },
+
       {
         $lookup: {
           from: "users",
-          localField: "_id",
+          localField: "seller",
           foreignField: "_id",
           as: "seller",
         },
       },
-      { $unwind: "$seller" },
+
       {
-        $project: {
-          sellerId: "$seller._id",
-          sellerName: "$seller.name",
-          email: "$seller.email",
-          totalOrders: 1,
-          productRevenue: 1,
-          shippingCost: 1,
-          totalEarnings: 1,
+        $unwind: {
+          path: "$seller",
+          preserveNullAndEmptyArrays: false,
         },
+      },
+
+      {
+        $addFields: {
+          perOrderSalary: {
+            $cond: [
+              { $gt: ["$seller.commissionSalary", 0] },
+
+              "$seller.commissionSalary",
+
+              0,
+            ],
+          },
+        },
+      },
+
+      {
+        $group: {
+          _id: "$seller._id",
+          sellerName: { $first: "$seller.name" },
+          phone: { $first: "$seller.phone" },
+
+          totalOrders: { $sum: 1 },
+          totalOrderValue: { $sum: "$orderValue" },
+
+          totalEarnings: { $sum: "$perOrderSalary" },
+          avgPerOrderSalary: { $avg: "$perOrderSalary" },
+        },
+      },
+
+      {
+        $sort: { totalEarnings: -1 },
       },
     ]);
   }

@@ -10,6 +10,98 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants copy";
 import { Order } from "../order/order.model";
 
+const getStaffStats = async (queryObj: any) => {
+  const totalStaffs = await User.countDocuments({
+    role: { $ne: "CUSTOMER" },
+    isDeleted: false,
+  });
+
+  const fixedSalaryAgg = await User.aggregate([
+    {
+      $match: {
+        role: { $ne: "CUSTOMER" },
+        isDeleted: false,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalFixedSalary: {
+          $sum: { $ifNull: ["$salary", 0] },
+        },
+      },
+    },
+  ]);
+
+  const totalFixedSalary = fixedSalaryAgg[0]?.totalFixedSalary || 0;
+
+  const commissionAgg = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        isPublished: true,
+        orderStatus: "COMPLETED",
+        deliveryStatus: "DELIVERED",
+        ...queryObj,
+      },
+    },
+
+    {
+      $addFields: {
+        orderValue: {
+          $subtract: ["$total", { $ifNull: ["$shippingCost", 0] }],
+        },
+      },
+    },
+
+    {
+      $lookup: {
+        from: "users",
+        localField: "seller",
+        foreignField: "_id",
+        as: "seller",
+      },
+    },
+    { $unwind: "$seller" },
+
+    {
+      $addFields: {
+        commissionAmount: {
+          $cond: [
+            { $gt: ["$seller.commissionSalary", 0] },
+            {
+              $multiply: [
+                "$orderValue",
+                { $divide: ["$seller.commissionSalary", 100] },
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
+
+    {
+      $group: {
+        _id: null,
+        totalSalaryByProduct: { $sum: "$commissionAmount" },
+      },
+    },
+  ]);
+
+  const totalSalaryByProduct =
+    commissionAgg[0]?.totalSalaryByProduct || 0;
+
+  const totalSalary = totalFixedSalary + totalSalaryByProduct;
+
+  return {
+    totalStaffs,
+    totalFixedSalary,
+    totalSalaryByProduct,
+    totalSalary,
+  };
+};
+
 const createUserService = async (payload: Partial<IUser>) => {
   const { email, password, ...rest } = payload;
 
@@ -188,7 +280,6 @@ const deleteUser = async (id: string) => {
 const getAllUsers = async (query: Record<string, string>) => {
   const queryObj: any = {};
 
-  // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
     queryObj.createdAt = {};
 
@@ -201,14 +292,14 @@ const getAllUsers = async (query: Record<string, string>) => {
     }
   }
 
-  // REMOVE SPECIAL FIELDS
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
 
   const queryBuilder = new QueryBuilder(
-    User.find({ role: { $ne: "CUSTOMER" }, isDeleted: false, ...queryObj }),
+    User.find({ role: { $ne: "CUSTOMER" }, isDeleted: false }),
     query,
   );
+
   const usersData = queryBuilder
     .filter()
     .search(userSearchableFields)
@@ -216,14 +307,18 @@ const getAllUsers = async (query: Record<string, string>) => {
     .fields()
     .paginate();
 
-  const [data, meta] = await Promise.all([
+  const [data, meta, staffStats] = await Promise.all([
     usersData.build(),
     queryBuilder.getMeta(),
+    getStaffStats(queryObj), 
   ]);
 
   return {
     data,
-    meta,
+    meta: {
+      ...meta,
+      ...staffStats, 
+    },
   };
 };
 const getAllTrashUsers = async (query: Record<string, string>) => {
