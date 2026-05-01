@@ -10,7 +10,7 @@ import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants copy";
 import { Order } from "../order/order.model";
 
-const getStaffStats = async (queryObj: any) => {
+export const getStaffStats = async (queryObj: any) => {
   const totalStaffs = await User.countDocuments({
     role: { $ne: "CUSTOMER" },
     isDeleted: false,
@@ -42,6 +42,7 @@ const getStaffStats = async (queryObj: any) => {
         isPublished: true,
         orderStatus: "COMPLETED",
         deliveryStatus: "DELIVERED",
+        seller: { $ne: null },
         ...queryObj,
       },
     },
@@ -63,6 +64,12 @@ const getStaffStats = async (queryObj: any) => {
       },
     },
     { $unwind: "$seller" },
+
+    {
+      $match: {
+        "seller.role": { $ne: "CUSTOMER" },
+      },
+    },
 
     {
       $addFields: {
@@ -89,8 +96,7 @@ const getStaffStats = async (queryObj: any) => {
     },
   ]);
 
-  const totalSalaryByProduct =
-    commissionAgg[0]?.totalSalaryByProduct || 0;
+  const totalSalaryByProduct = commissionAgg[0]?.totalSalaryByProduct || 0;
 
   const totalSalary = totalFixedSalary + totalSalaryByProduct;
 
@@ -310,14 +316,14 @@ const getAllUsers = async (query: Record<string, string>) => {
   const [data, meta, staffStats] = await Promise.all([
     usersData.build(),
     queryBuilder.getMeta(),
-    getStaffStats(queryObj), 
+    getStaffStats(queryObj),
   ]);
 
   return {
     data,
     meta: {
       ...meta,
-      ...staffStats, 
+      ...staffStats,
     },
   };
 };

@@ -29,6 +29,7 @@ const getMyOrders = catchAsync(async (req: Request, res: Response) => {
     message: "Orders Retrieved Successfully",
     meta: result.meta,
     data: result.data,
+    stats: result.stats,
   });
 });
 

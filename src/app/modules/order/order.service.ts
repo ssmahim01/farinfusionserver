@@ -472,6 +472,7 @@ const getAllOrders = async (query: Record<string, string>) => {
     {
       $match: {
         isDeleted: false,
+        isPublished: true,
         ...queryObj,
       },
     },
@@ -554,7 +555,7 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
     .populate("seller", "name email role")
     .populate("products.product");
 
-    const stats = await Order.aggregate([
+  const stats = await Order.aggregate([
     {
       $match: {
         isDeleted: false,
@@ -708,6 +709,40 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     throw new AppError(httpStatus.FORBIDDEN, "Access denied");
   }
 
+  const statsAgg = await Order.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        isPublished: true,
+
+        ...(user.role === Role.CUSTOMER
+          ? { "billingDetails.email": user.email }
+          : { seller: new Types.ObjectId(userId) }),
+
+        ...queryObj,
+      },
+    },
+    {
+      $group: {
+        _id: "$orderStatus",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const stats = {
+    total: 0,
+    PENDING: 0,
+    CONFIRMED: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+  };
+
+  statsAgg.forEach((item) => {
+    stats[item._id as keyof typeof stats] = item.count;
+    stats.total += item.count;
+  });
+
   const queryBuilder = new QueryBuilder(baseQuery, query)
     .search(orderSearchableFields)
     .filter()
@@ -724,7 +759,7 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
 
   const meta = await queryBuilder.getMeta();
 
-  return { data: orders, meta };
+  return { data: orders, meta, stats };
 };
 
 export const OrderServices = {
