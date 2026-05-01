@@ -176,7 +176,9 @@ const getAllProducts = async (query: Record<string, string>) => {
         _id: "$products.product",
         totalSold: { $sum: "$products.quantity" },
         totalRevenue: {
-          $sum: "$total",
+          $sum: {
+            $multiply: ["$products.price", "$products.quantity"],
+          },
         },
       },
     },
