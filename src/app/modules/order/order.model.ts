@@ -87,6 +87,11 @@ const orderSchema = new Schema<IOrder>(
       default: true,
     },
 
+    isRestocked: {
+      type: Boolean,
+      default: false,
+    },
+
     seller: {
       type: Schema.Types.ObjectId,
       ref: "User",

@@ -9,7 +9,8 @@ import {
   CourierStatus,
 } from "./courier.interface";
 import { Order } from "../order/order.model";
-import { DeliveryStatus } from "../order/order.interface";
+import { DeliveryStatus, OrderStatus } from "../order/order.interface";
+import { Product } from "../product/product.model";
 
 const BASE_URL = "https://portal.packzy.com/api/v1";
 
@@ -75,10 +76,29 @@ const trackCourier = async (trackingCode: string) => {
       });
     }
     if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
-      await Order.findByIdAndUpdate(courier.order, {
-        deliveryStatus: "CANCELLED",
-        orderStatus: "CANCELLED",
-      });
+      const order = await Order.findById(courier.order).populate(
+        "products.product",
+      );
+
+      if (order) {
+        if (!(order as any).isRestocked) {
+          for (const item of order.products) {
+            await Product.findByIdAndUpdate(item.product, {
+              $inc: {
+                availableStock: item.quantity,
+                totalSold: -item.quantity,
+              },
+            });
+          }
+
+          (order as any).isRestocked = true;
+        }
+
+        order.deliveryStatus = DeliveryStatus.CANCELLED;
+        order.orderStatus = OrderStatus.CANCELLED;
+
+        await order.save();
+      }
     }
   }
 

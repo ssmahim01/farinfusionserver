@@ -20,6 +20,7 @@ export enum DeliveryStatus {
   IN_TRANSIT = "IN_TRANSIT",
   DELIVERED = "DELIVERED",
   RETURNED = "RETURNED",
+  CANCELLED = "CANCELLED",
 }
 
 export interface IOrderProduct {
@@ -60,6 +61,7 @@ export interface IOrder {
 
   transactionId?: string;
   payment?: string;
+  isRestocked?: boolean;
 
   courierName?: string;
   trackingNumber?: string;
