@@ -338,13 +338,46 @@ const getSingleOrder = async (id: string) => {
 };
 
 const deleteOrder = async (id: string) => {
-  const order = await Order.findById(id);
-  if (!order) {
-    throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
-  }
+  const session = await mongoose.startSession();
 
-  await Order.findByIdAndDelete(id);
-  return { data: null };
+  try {
+    session.startTransaction();
+
+    const order = await Order.findById(id).session(session);
+
+    if (!order) {
+      throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
+    }
+
+    if (!(order as any).isRestocked) {
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              availableStock: item.quantity,
+              totalSold: -item.quantity,
+            },
+          },
+          { session },
+        );
+      }
+
+      (order as any).isRestocked = true;
+      await order.save({ session });
+    }
+
+    await Order.findByIdAndDelete(id).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return { data: null };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 const updateOrderStatus = async (orderId: string, status: string) => {
