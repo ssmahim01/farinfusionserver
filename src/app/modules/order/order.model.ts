@@ -48,6 +48,26 @@ const orderSchema = new Schema<IOrder>(
       },
     ],
 
+    exchangeHistory: [
+      {
+        oldProduct: { type: Schema.Types.ObjectId, ref: "Product" },
+        newProduct: { type: Schema.Types.ObjectId, ref: "Product" },
+        quantity: Number,
+        priceDiff: Number,
+        note: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    damageProducts: [
+      {
+        product: { type: Schema.Types.ObjectId, ref: "Product" },
+        quantity: Number,
+        note: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
     subtotal: Number,
     shippingCost: Number,
     total: Number,

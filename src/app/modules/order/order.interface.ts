@@ -13,6 +13,7 @@ export enum OrderStatus {
   SHIPPED = "SHIPPED",
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
+  DAMAGE = "DAMAGE",
 }
 
 export enum DeliveryStatus {
@@ -46,6 +47,8 @@ export interface IOrder {
   isPublished?: boolean;
 
   orderType: OrderType;
+  exchangeHistory?: any[];
+  damageProducts?: any[];
 
   customer?: Types.ObjectId;
 

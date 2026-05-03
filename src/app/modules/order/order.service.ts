@@ -405,6 +405,147 @@ const updateOrderStatus = async (orderId: string, status: string) => {
   return updatedOrder;
 };
 
+const exchangeOrderItem = async ({
+  orderId,
+  itemIndex,
+  newProductId,
+  note,
+}: any) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const order = await Order.findById(orderId)
+      .populate("products.product")
+      .session(session);
+
+    if (!order) throw new AppError(404, "Order not found");
+
+    const item = order.products[itemIndex];
+    if (!item) throw new AppError(400, "Invalid item");
+
+    const oldProduct = await Product.findById(item.product).session(session);
+    const newProduct = await Product.findById(newProductId).session(session);
+
+    if (!oldProduct) throw new AppError(404, "Old product not found");
+    if (!newProduct) throw new AppError(404, "New product not found");
+
+    const qty = item.quantity;
+
+    // Restore old product stock
+    await Product.findByIdAndUpdate(
+      oldProduct._id,
+      {
+        $inc: {
+          availableStock: qty,
+          totalSold: -qty,
+        },
+      },
+      { session },
+    );
+
+    // Deduct new product stock
+    await Product.findByIdAndUpdate(
+      newProduct._id,
+      {
+        $inc: {
+          availableStock: -qty,
+          totalSold: qty,
+        },
+      },
+      { session },
+    );
+
+    // price difference
+    const priceDiff = (newProduct.price - item.price) * qty;
+
+    // update order item
+    item.product = newProduct._id;
+    item.price = newProduct.price;
+
+    // history save
+    if (order) {
+      if (!order.exchangeHistory) {
+        order.exchangeHistory = [];
+      }
+      order.exchangeHistory.push({
+        product: oldProduct?._id,
+        newProduct: newProduct._id,
+        quantity: qty,
+        priceDiff,
+        note,
+      });
+    }
+
+    // update total
+    order.total += priceDiff;
+
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+const markOrderDamage = async ({
+  orderId,
+  itemIndex,
+  quantity,
+  note,
+}: any) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const order = await Order.findById(orderId)
+      .populate("products.product")
+      .session(session);
+
+    if (!order) throw new AppError(404, "Order not found");
+
+    const item = order.products[itemIndex];
+    if (!item) throw new AppError(400, "Invalid item");
+
+    if (quantity > item.quantity) {
+      throw new AppError(400, "Invalid damage quantity");
+    }
+
+    const product = await Product.findById(item.product).session(session);
+
+    if (!product) throw new AppError(404, "Product not found");
+
+
+    order?.damageProducts?.push({
+      product: product?._id,
+      quantity,
+      note,
+    });
+
+    order.total -= item.price * quantity;
+
+    order.orderStatus = OrderStatus.DAMAGE;
+
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 const updateOrder = async (orderId: string, payload: any) => {
   const existingOrder = await Order.findById(orderId);
 
@@ -806,6 +947,8 @@ export const OrderServices = {
   assignSeller,
   deleteOrder,
   getAllScheduledOrders,
+  exchangeOrderItem,
+  markOrderDamage,
   getMyScheduledOrders,
   getMyOrders,
 };
