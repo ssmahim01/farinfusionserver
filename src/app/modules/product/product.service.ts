@@ -120,11 +120,51 @@ const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
     .populate("category", "title")
     .populate("brand", "title");
+
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
   }
+
+  const sales = await Order.aggregate([
+    {
+      $match: {
+        orderStatus: "COMPLETED",
+        deliveryStatus: "DELIVERED",
+      },
+    },
+    { $unwind: "$products" },
+    {
+      $match: {
+        "products.product": product._id,
+      },
+    },
+    {
+      $group: {
+        _id: "$products.product",
+        totalSold: { $sum: "$products.quantity" },
+        totalRevenue: {
+          $sum: {
+            $multiply: ["$products.price", "$products.quantity"],
+          },
+        },
+      },
+    },
+  ]);
+
+  const totalSold = sales[0]?.totalSold || 0;
+  const totalRevenue = sales[0]?.totalRevenue || 0;
+
+  const plain = product.toObject();
+
+  const availableStock = (plain.totalAddedStock || 0) - totalSold;
+
   return {
-    data: product,
+    data: {
+      ...plain,
+      totalSold,
+      totalRevenue,
+      availableStock,
+    },
   };
 };
 
@@ -210,10 +250,15 @@ const getAllProducts = async (query: Record<string, string>) => {
     const plain = product.toObject ? product.toObject() : product;
 
     const sale = salesMap.get(plain._id.toString());
+    const totalSold = sale?.totalSold || 0;
+
+    const availableStock =
+      totalSold > 0 ? (plain.totalAddedStock || 0) - totalSold : plain.totalAddedStock;
 
     return {
       ...plain,
-      totalSold: sale?.totalSold || 0,
+      totalSold,
+      availableStock,
       totalRevenue: sale?.totalRevenue || 0,
     };
   });

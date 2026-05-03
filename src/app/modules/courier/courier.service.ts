@@ -20,21 +20,78 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-const mapOrderToSteadfast = (order: any) => ({
-  invoice: order.customOrderId,
-  recipient_name: order.billingDetails?.fullName,
-  recipient_phone: order.billingDetails?.phone,
-  recipient_address: order.billingDetails?.address,
-  cod_amount: order.total,
-  note: order?.note || "Auto generated order",
-  item_description: order.products
-    ?.map((p: any) => {
-      const name = p.product?.title || "Unknown Product";
-      return `${name} x${p.quantity}`;
-    })
-    .join(", "),
-  delivery_type: 0,
-});
+const MAX_DESC_LENGTH = 500;
+
+const mapOrderToSteadfast = (order: any) => {
+  const products = order.products || [];
+
+  let parts = products.map((p: any) => {
+    const name = p.product?.title || "Item";
+    return { name, qty: p.quantity };
+  });
+
+  const buildDescription = (items: any[]) =>
+    items.map((p) => `${p.name} x${p.qty}`).join(", ");
+
+  let description = buildDescription(parts);
+
+  if (description.length <= MAX_DESC_LENGTH) {
+    return {
+      invoice: order.customOrderId,
+      recipient_name: order.billingDetails?.fullName,
+      recipient_phone: order.billingDetails?.phone,
+      recipient_address: order.billingDetails?.address,
+      cod_amount: order.total,
+      note: order?.note || "Auto generated order",
+      item_description: description,
+      delivery_type: 0,
+    };
+  }
+
+  let totalNamesLength = parts.reduce(
+    (sum: number, p: any) => sum + p.name.length,
+    0,
+  );
+
+  const reservedLength = parts.length * 6;
+  const availableForNames = MAX_DESC_LENGTH - reservedLength;
+
+  const shrinkRatio = availableForNames / totalNamesLength;
+
+  const minLength = 5;
+
+  parts = parts.map((p: any) => {
+    let newLen = Math.floor(p.name.length * shrinkRatio);
+
+    if (newLen < minLength) newLen = minLength;
+
+    if (newLen < p.name.length) {
+      return {
+        ...p,
+        name: p.name.slice(0, newLen - 3) + "...",
+      };
+    }
+
+    return p;
+  });
+
+  description = buildDescription(parts);
+
+  if (description.length > MAX_DESC_LENGTH) {
+    description = description.slice(0, MAX_DESC_LENGTH - 3) + "...";
+  }
+
+  return {
+    invoice: order.customOrderId,
+    recipient_name: order.billingDetails?.fullName,
+    recipient_phone: order.billingDetails?.phone,
+    recipient_address: order.billingDetails?.address,
+    cod_amount: order.total,
+    note: order?.note || "Auto generated order",
+    item_description: description,
+    delivery_type: 0,
+  };
+};
 
 const trackCourier = async (trackingCode: string) => {
   const courier = await Courier.findOne({ trackingCode });
@@ -113,7 +170,7 @@ const createCourier = async (orderId: string) => {
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
- const existing = await Courier.findOne({ order: orderId });
+  const existing = await Courier.findOne({ order: orderId });
 
   // if (existing) {
   //   existing.status = CourierStatus.CANCELLED; // mark old one
