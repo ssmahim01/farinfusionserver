@@ -547,10 +547,55 @@ const markOrderDamage = async ({
 };
 
 const updateOrder = async (orderId: string, payload: any) => {
-  const existingOrder = await Order.findById(orderId);
+  const existingOrder = await Order.findById(orderId).populate("products.product");
 
   if (!existingOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
+
+  // --- Stock/Sold reconciliation when products are being updated ---
+  if (payload.products && payload.products.length > 0) {
+    const existingProductMap = new Map<string, number>();
+
+    // Build a map of productId -> quantity from the EXISTING order
+    for (const item of existingOrder.products) {
+      const productId =
+        typeof item.product === "object"
+          ? (item.product as any)._id.toString()
+          : item.product;
+      existingProductMap.set(productId, (existingProductMap.get(productId) || 0) + item.quantity);
+    }
+
+    const newProductMap = new Map<string, number>();
+
+    // Build a map of productId -> quantity from the NEW payload
+    for (const item of payload.products) {
+      const productId =
+        typeof item.product === "object"
+          ? item.product._id?.toString() ?? item.product.toString()
+          : item.product.toString();
+      newProductMap.set(productId, (newProductMap.get(productId) || 0) + item.quantity);
+    }
+
+    // Collect all unique product IDs across both old and new
+    const allProductIds = new Set([...existingProductMap.keys(), ...newProductMap.keys()]);
+
+    await Promise.all(
+      Array.from(allProductIds).map(async (productId) => {
+        const oldQty = existingProductMap.get(productId) || 0;
+        const newQty = newProductMap.get(productId) || 0;
+        const diff = newQty - oldQty;
+
+        if (diff === 0) return; 
+
+        const product = await Product.findById(productId);
+        if (!product) return;
+
+        product.totalSold = Math.max(0, (product.totalSold || 0) + diff);
+        product.availableStock = Math.max(0, (product.availableStock || 0) - diff);
+        await product.save();
+      }),
+    );
   }
 
   let subtotal = 0;
@@ -562,9 +607,9 @@ const updateOrder = async (orderId: string, payload: any) => {
     );
   }
 
-  // const prevStatus = existingOrder.orderStatus;
   const shippingCost = payload.shippingCost ?? existingOrder.shippingCost ?? 0;
-  const total = subtotal + shippingCost - payload.discount;
+  const discount = payload.discount ?? existingOrder.discount ?? 0;
+  const total = subtotal + shippingCost - discount;
 
   const updatedOrder = await Order.findByIdAndUpdate(
     orderId,
@@ -578,6 +623,7 @@ const updateOrder = async (orderId: string, payload: any) => {
   if (!updatedOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order update failed");
   }
+
   return updatedOrder;
 };
 
