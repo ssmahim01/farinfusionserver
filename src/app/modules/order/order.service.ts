@@ -423,19 +423,18 @@ const exchangeOrderItem = async ({
     if (!order) throw new AppError(404, "Order not found");
 
     const item = order.products[itemIndex];
-    if (!item) throw new AppError(400, "Invalid item");
+    if (!item) throw new AppError(400, "Invalid item index");
 
     const oldProduct = await Product.findById(item.product).session(session);
     const newProduct = await Product.findById(newProductId).session(session);
 
-    if (!oldProduct) throw new AppError(404, "Old product not found");
     if (!newProduct) throw new AppError(404, "New product not found");
 
     const qty = item.quantity;
 
-    // Restore old product stock
+    // RESTORE OLD PRODUCT
     await Product.findByIdAndUpdate(
-      oldProduct._id,
+      oldProduct?._id,
       {
         $inc: {
           availableStock: qty,
@@ -445,7 +444,7 @@ const exchangeOrderItem = async ({
       { session },
     );
 
-    // Deduct new product stock
+    // DEDUCT NEW PRODUCT
     await Product.findByIdAndUpdate(
       newProduct._id,
       {
@@ -457,28 +456,25 @@ const exchangeOrderItem = async ({
       { session },
     );
 
-    // price difference
+    // PRICE DIFFERENCE
     const priceDiff = (newProduct.price - item.price) * qty;
 
-    // update order item
+    // UPDATE ORDER ITEM
     item.product = newProduct._id;
     item.price = newProduct.price;
 
-    // history save
-    if (order) {
-      if (!order.exchangeHistory) {
-        order.exchangeHistory = [];
-      }
-      order.exchangeHistory.push({
-        product: oldProduct?._id,
-        newProduct: newProduct._id,
-        quantity: qty,
-        priceDiff,
-        note,
-      });
-    }
+    // HISTORY (NO INTERFACE NEEDED)
+    if (!order.exchangeHistory) order.exchangeHistory = [];
 
-    // update total
+    order.exchangeHistory.push({
+      oldProduct: oldProduct?._id,
+      newProduct: newProduct._id,
+      quantity: qty,
+      priceDiff,
+      note,
+      createdAt: new Date(),
+    });
+
     order.total += priceDiff;
 
     await order.save({ session });
@@ -515,23 +511,22 @@ const markOrderDamage = async ({
     if (!item) throw new AppError(400, "Invalid item");
 
     if (quantity > item.quantity) {
-      throw new AppError(400, "Invalid damage quantity");
+      throw new AppError(400, "Invalid quantity");
     }
 
-    const product = await Product.findById(item.product).session(session);
+    if (!order.damageProducts) order.damageProducts = [];
 
-    if (!product) throw new AppError(404, "Product not found");
-
-
-    order?.damageProducts?.push({
-      product: product?._id,
+    order.damageProducts.push({
+      product: item.product,
       quantity,
       note,
+      createdAt: new Date(),
     });
 
-    order.total -= item.price * quantity;
+    // DAMAGE = LOSS (no stock return)
 
-    order.orderStatus = OrderStatus.DAMAGE;
+    order.total -= item.price * quantity;
+    order.orderStatus = OrderStatus.DAMAGE
 
     await order.save({ session });
 

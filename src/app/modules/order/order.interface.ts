@@ -29,7 +29,7 @@ export interface IOrderProduct {
   quantity: number;
   title?: string;
   price: number;
-  lineTotal: number;
+  lineTotal?: number;
 }
 
 export interface IBillingDetails {
@@ -51,6 +51,7 @@ export interface IOrder {
   damageProducts?: any[];
 
   customer?: Types.ObjectId;
+  partialNotes?: string;
 
   billingDetails?: IBillingDetails;
 

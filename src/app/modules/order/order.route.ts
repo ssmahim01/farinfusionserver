@@ -1,5 +1,5 @@
 import express from "express";
-import { OrderControllers } from "./order.controller";
+import { OrderControllers, partialUpdateOrder } from "./order.controller";
 import { checkAuth } from "../../middlewares/checkAuth";
 import { Role } from "../user/user.interface";
 
@@ -84,6 +84,11 @@ router.patch(
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.updateCompleteOrder,
 );
+
+router.post("/exchange", OrderControllers.exchangeOrderItem);
+
+router.post("/damage", OrderControllers.markOrderDamage);
+router.post("/partial-update", partialUpdateOrder);
 
 router.delete("/:id", checkAuth(Role.ADMIN), OrderControllers.deleteOrder);
 

@@ -48,6 +48,8 @@ const orderSchema = new Schema<IOrder>(
       },
     ],
 
+    partialNotes: { type: String },
+
     exchangeHistory: [
       {
         oldProduct: { type: Schema.Types.ObjectId, ref: "Product" },

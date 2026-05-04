@@ -3,6 +3,9 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { OrderServices } from "./order.service";
+import { Product } from "../product/product.model";
+import { Order } from "./order.model";
+import mongoose from "mongoose";
 
 const createOrder = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
@@ -193,6 +196,119 @@ const deleteOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+export const partialUpdateOrder = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+
+    session.startTransaction();
+
+    const { orderId, removeItems, addItems, note } = req.body;
+
+    const order = await Order.findById(orderId).session(session);
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    for (const r of removeItems) {
+      const item = order.products[r.itemIndex];
+
+      if (!item) throw new Error("Invalid item index");
+
+      if (r.quantity > item.quantity) {
+        throw new Error("Invalid remove quantity");
+      }
+
+      // reduce quantity
+      item.quantity -= r.quantity;
+
+      // restore stock
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: r.quantity } },
+        { session },
+      );
+
+      // remove if zero
+      if (item.quantity === 0) {
+        order.products.splice(r.itemIndex, 1);
+      }
+    }
+
+    for (const a of addItems) {
+      const product = await Product.findById(a.productId).session(session);
+
+      if (!product) throw new Error("Product not found");
+
+      if ((product.availableStock ?? 0) < a.quantity) {
+        throw new Error("Insufficient stock");
+      }
+
+      // reduce stock
+      product.availableStock = (product.availableStock ?? 0) - a.quantity;
+      await product.save({ session });
+
+      // push item
+      order.products.push({
+        product: product._id,
+        title: product.title,
+        price: product.price,
+        quantity: a.quantity,
+      });
+    }
+
+    order.total = order.products.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+    order.partialNotes = note || "";
+
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Order partially updated",
+      data: order,
+    });
+};
+
+const exchangeOrderItem = catchAsync(async (req: Request, res: Response) => {
+  const { orderId, itemIndex, newProductId, note } = req.body;
+
+  const result = await OrderServices.exchangeOrderItem({
+    orderId,
+    itemIndex,
+    newProductId,
+    note,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product exchanged successfully",
+    data: result,
+  });
+});
+
+const markOrderDamage = catchAsync(async (req: Request, res: Response) => {
+  const { orderId, itemIndex, quantity, note } = req.body;
+
+  const result = await OrderServices.markOrderDamage({
+    orderId,
+    itemIndex,
+    quantity,
+    note,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Order marked as damaged",
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrder,
   getMyOrders,
@@ -203,6 +319,8 @@ export const OrderControllers = {
   updateCompleteOrder,
   assignSeller,
   getAllScheduledOrders,
+  exchangeOrderItem,
+  markOrderDamage,
   getMyScheduledOrders,
   deleteOrder,
   getCustomerOrder,
