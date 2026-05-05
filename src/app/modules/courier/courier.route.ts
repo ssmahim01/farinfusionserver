@@ -14,32 +14,32 @@ router.post(
   "/create",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   validateRequest(createCourierZodSchema),
-  CourierControllers.createCourier
+  CourierControllers.createCourier,
 );
 
 router.get(
   "/track/:trackingCode",
   checkAuth(...Object.values(Role)),
   validateRequest(trackCourierZodSchema),
-  CourierControllers.trackCourier
+  CourierControllers.trackCourier,
 );
 
 router.get(
   "/",
-  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
-  CourierControllers.getAllCouriers
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+  CourierControllers.getAllCouriers,
 );
 
 router.get(
   "/:id",
   checkAuth(...Object.values(Role)),
-  CourierControllers.getSingleCourier
+  CourierControllers.getSingleCourier,
 );
 
 router.get(
   "/order/:orderId",
   checkAuth(...Object.values(Role)),
-  CourierControllers.getCourierByOrderId
+  CourierControllers.getCourierByOrderId,
 );
 
 export const courierRoutes = router;

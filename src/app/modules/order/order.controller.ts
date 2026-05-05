@@ -291,6 +291,17 @@ const exchangeOrderItem = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getAllDamagedProducts = catchAsync(async (req: Request, res: Response) => {
+  const result = await OrderServices.getAllDamagedProducts();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Damaged products retrieved successfully",
+    data: result,
+  });
+});
+
 const markOrderDamage = catchAsync(async (req: Request, res: Response) => {
   const { orderId, itemIndex, quantity, note } = req.body;
 
@@ -319,6 +330,7 @@ export const OrderControllers = {
   updateCompleteOrder,
   assignSeller,
   getAllScheduledOrders,
+  getAllDamagedProducts,
   exchangeOrderItem,
   markOrderDamage,
   getMyScheduledOrders,
