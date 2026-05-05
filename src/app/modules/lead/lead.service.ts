@@ -73,12 +73,45 @@ const createLeadService = async (payload: any, user: JwtPayload) => {
   return populatedLead;
 };
 
+// const updateLeadService = async (
+//   payload: Partial<ILead>,
+//   leadId: string,
+//   decodedToken: JwtPayload,
+// ) => {
+//   const existingLead = await Lead.findById(leadId);
+
+//   if (payload.assignedBy && decodedToken.role !== "ADMIN") {
+//     throw new AppError(
+//       httpStatus.FORBIDDEN,
+//       "Only admin can assign leads to others",
+//     );
+//   }
+
+//   if (!existingLead) {
+//     throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
+//   }
+
+//   const finalPayload = {
+//     ...payload,
+//     social : payload.social
+//   }
+
+//   const updatedLead = await Lead.findByIdAndUpdate(leadId, finalPayload, {
+//     new: true,
+//   });
+//   return updatedLead;
+// };
+
 const updateLeadService = async (
   payload: Partial<ILead>,
   leadId: string,
   decodedToken: JwtPayload,
 ) => {
   const existingLead = await Lead.findById(leadId);
+
+  if (!existingLead) {
+    throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
+  }
 
   if (payload.assignedBy && decodedToken.role !== "ADMIN") {
     throw new AppError(
@@ -87,15 +120,23 @@ const updateLeadService = async (
     );
   }
 
-  if (!existingLead) {
-    throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
+  const updateData: any = { ...payload };
+
+  if (payload.social) {
+    for (const key in payload.social as any) {
+      updateData[`social.${key}`] = payload.social[key as any];
+    }
   }
 
-  const updatedLead = await Lead.findByIdAndUpdate(leadId, payload, {
-    new: true,
-  });
+  const updatedLead = await Lead.findByIdAndUpdate(
+    leadId,
+    { $set: updateData },
+    { new: true }
+  );
+
   return updatedLead;
 };
+
 
 const checkFraudByPhone = async (phone: string) => {
   if (!phone) {

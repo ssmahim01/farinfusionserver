@@ -10,6 +10,14 @@ export enum LeadStatus {
     INACTIVE = "INACTIVE",
 }
 
+export enum SocialStatus {
+  FACEBOOK = "facebook",
+  INSTAGRAM = "instagram",
+  LINKEDIN = "linkedin",
+  YOUTUBE = "youtube",
+  TIKTOK = "tiktok",
+}
+
 export enum LeadPriority {
     LOW = "LOW",
     MEDIUM = "MEDIUM",
@@ -22,6 +30,7 @@ export interface ILead {
     email?: string;
     phone: string;
     address: string;
+    social?: SocialStatus;
     status: LeadStatus;
     isDeleted?: boolean;
     hasOrderedToday?: boolean;

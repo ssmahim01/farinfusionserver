@@ -96,7 +96,7 @@ const orderSchema = new Schema<IOrder>(
 
     scheduleType: {
       type: String,
-      enum: ["INSTANT", "SCHEDULED"],
+      enum: ["INSTANT", "SCHEDULED", "HOLD"],
       default: "INSTANT",
     },
 

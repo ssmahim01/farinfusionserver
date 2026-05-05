@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { ILead, LeadStatus, LeadPriority } from "./lead.interface";
+import { ILead, LeadStatus, LeadPriority, SocialStatus } from "./lead.interface";
 
 const LeadSchema = new Schema<ILead>(
   {
@@ -30,6 +30,12 @@ const LeadSchema = new Schema<ILead>(
       required: [true, "Address is required"],
       trim: true,
     },
+    social: {
+      type: String,
+      enum: Object.values(SocialStatus),
+      required: false,
+    },
+  
     status: {
       type: String,
       enum: Object.values(LeadStatus),

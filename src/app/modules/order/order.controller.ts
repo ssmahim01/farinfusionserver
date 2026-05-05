@@ -309,6 +309,38 @@ const markOrderDamage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMyHoldOrders = catchAsync(async (req, res) => {
+  const user = req.user;
+
+  const result = await OrderServices.getMyHoldOrders(
+    user.userId,
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "My Hold orders retrieved",
+    data: result.data,
+    meta: result.meta,
+  });
+});
+
+const getAllHoldOrders = catchAsync(async (req, res) => {
+  const result = await OrderServices.getAllHoldOrders(
+    req.query as Record<string, string>,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: 200,
+    message: "Hold orders retrieved",
+    data: result.data,
+    meta: result.meta,
+    stats: result.stats,
+  });
+});
+
 export const OrderControllers = {
   createOrder,
   getMyOrders,
@@ -325,4 +357,9 @@ export const OrderControllers = {
   deleteOrder,
   getCustomerOrder,
   updateOrderStatus,
+
+  getMyHoldOrders,
+  getAllHoldOrders,
+
+
 };

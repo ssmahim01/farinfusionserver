@@ -48,9 +48,21 @@ router.get(
 );
 
 router.get(
+  "/hold-orders",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.getAllHoldOrders,
+);
+
+router.get(
   "/my-scheduled-orders",
   checkAuth(...Object.values(Role)),
   OrderControllers.getMyScheduledOrders,
+);
+
+router.get(
+  "/my-hold-orders",
+  checkAuth(...Object.values(Role)),
+  OrderControllers.getMyHoldOrders,
 );
 
 router.get(
@@ -91,5 +103,9 @@ router.post("/damage", OrderControllers.markOrderDamage);
 router.post("/partial-update", partialUpdateOrder);
 
 router.delete("/:id", checkAuth(Role.ADMIN), OrderControllers.deleteOrder);
+
+
+
+
 
 export const orderRoutes = router;
