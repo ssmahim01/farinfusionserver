@@ -106,12 +106,8 @@ router.patch(
 router.post("/exchange", OrderControllers.exchangeOrderItem);
 
 router.post("/damage", OrderControllers.markOrderDamage);
-router.post("/partial-update", partialUpdateOrder);
+router.post("/partial-update", OrderControllers.partialUpdateOrder);
 
 router.delete("/:id", checkAuth(Role.ADMIN), OrderControllers.deleteOrder);
-
-
-
-
 
 export const orderRoutes = router;

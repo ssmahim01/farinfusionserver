@@ -369,6 +369,7 @@ export const OrderControllers = {
   deleteOrder,
   getCustomerOrder,
   updateOrderStatus,
+  partialUpdateOrder,
 
   getMyHoldOrders,
   getAllHoldOrders,
