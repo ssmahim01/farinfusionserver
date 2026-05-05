@@ -127,10 +127,7 @@ const getSingleProduct = async (slug: string) => {
 
   const sales = await Order.aggregate([
     {
-      $match: {
-        orderStatus: "COMPLETED",
-        deliveryStatus: "DELIVERED",
-      },
+      $match: {},
     },
     { $unwind: "$products" },
     {
@@ -186,10 +183,7 @@ const deleteProduct = async (id: string) => {
 };
 
 const getAllProducts = async (query: Record<string, string>) => {
-  const orderMatch: any = {
-    orderStatus: "COMPLETED",
-    deliveryStatus: "DELIVERED",
-  };
+  const orderMatch: any = {};
 
   // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
