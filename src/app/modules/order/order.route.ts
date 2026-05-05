@@ -30,6 +30,12 @@ router.get(
 );
 
 router.get(
+  "/damaged-products",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  OrderControllers.getAllDamagedProducts,
+);
+
+router.get(
   "/",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
   OrderControllers.getAllOrders,

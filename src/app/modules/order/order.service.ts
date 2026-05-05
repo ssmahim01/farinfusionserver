@@ -490,12 +490,7 @@ const exchangeOrderItem = async ({
   }
 };
 
-const markOrderDamage = async ({
-  orderId,
-  itemIndex,
-  quantity,
-  note,
-}: any) => {
+const markOrderDamage = async ({ orderId, itemIndex, quantity, note }: any) => {
   const session = await mongoose.startSession();
 
   try {
@@ -526,7 +521,7 @@ const markOrderDamage = async ({
     // DAMAGE = LOSS (no stock return)
 
     order.total -= item.price * quantity;
-    order.orderStatus = OrderStatus.DAMAGE
+    order.orderStatus = OrderStatus.DAMAGE;
 
     await order.save({ session });
 
@@ -542,7 +537,8 @@ const markOrderDamage = async ({
 };
 
 const updateOrder = async (orderId: string, payload: any) => {
-  const existingOrder = await Order.findById(orderId).populate("products.product");
+  const existingOrder =
+    await Order.findById(orderId).populate("products.product");
 
   if (!existingOrder) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
@@ -558,7 +554,10 @@ const updateOrder = async (orderId: string, payload: any) => {
         typeof item.product === "object"
           ? (item.product as any)._id.toString()
           : item.product;
-      existingProductMap.set(productId, (existingProductMap.get(productId) || 0) + item.quantity);
+      existingProductMap.set(
+        productId,
+        (existingProductMap.get(productId) || 0) + item.quantity,
+      );
     }
 
     const newProductMap = new Map<string, number>();
@@ -567,13 +566,19 @@ const updateOrder = async (orderId: string, payload: any) => {
     for (const item of payload.products) {
       const productId =
         typeof item.product === "object"
-          ? item.product._id?.toString() ?? item.product.toString()
+          ? (item.product._id?.toString() ?? item.product.toString())
           : item.product.toString();
-      newProductMap.set(productId, (newProductMap.get(productId) || 0) + item.quantity);
+      newProductMap.set(
+        productId,
+        (newProductMap.get(productId) || 0) + item.quantity,
+      );
     }
 
     // Collect all unique product IDs across both old and new
-    const allProductIds = new Set([...existingProductMap.keys(), ...newProductMap.keys()]);
+    const allProductIds = new Set([
+      ...existingProductMap.keys(),
+      ...newProductMap.keys(),
+    ]);
 
     await Promise.all(
       Array.from(allProductIds).map(async (productId) => {
@@ -581,13 +586,16 @@ const updateOrder = async (orderId: string, payload: any) => {
         const newQty = newProductMap.get(productId) || 0;
         const diff = newQty - oldQty;
 
-        if (diff === 0) return; 
+        if (diff === 0) return;
 
         const product = await Product.findById(productId);
         if (!product) return;
 
         product.totalSold = Math.max(0, (product.totalSold || 0) + diff);
-        product.availableStock = Math.max(0, (product.availableStock || 0) - diff);
+        product.availableStock = Math.max(
+          0,
+          (product.availableStock || 0) - diff,
+        );
         await product.save();
       }),
     );
@@ -1090,6 +1098,35 @@ const getMyHoldOrders = async (
 
 
 
+const getAllDamagedProducts = async () => {
+  const orders = await Order.find({ isDeleted: false, isPublished: true })
+    .populate("products.product")
+    .lean();
+
+  const damagedProducts: any[] = [];
+
+  orders.forEach((order) => {
+    order.products.forEach((item: any) => {
+      if (order.orderStatus === "DAMAGE") {
+        damagedProducts.push({
+          orderId: order._id,
+          customOrderId: order.customOrderId,
+          productId: item.product?._id,
+          productTitle: item.product?.title || item.title,
+          quantity: item.damagedQuantity || item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.price * (item.damagedQuantity || item.quantity),
+          customerName: order.billingDetails?.fullName,
+          markedAt: item.updatedAt || order.updatedAt,
+          notes: order.note,
+        });
+      }
+    });
+  });
+
+  return damagedProducts;
+};
+
 export const OrderServices = {
   createOrder,
   getSingleOrder,
@@ -1101,6 +1138,7 @@ export const OrderServices = {
   assignSeller,
   deleteOrder,
   getAllScheduledOrders,
+  getAllDamagedProducts,
   exchangeOrderItem,
   markOrderDamage,
   getMyScheduledOrders,
