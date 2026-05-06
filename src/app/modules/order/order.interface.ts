@@ -25,6 +25,17 @@ export enum DeliveryStatus {
   CANCELLED = "CANCELLED",
 }
 
+export enum AdvanceOption {
+  BKASH = "bkash",
+  NAGAD = "nagad",
+  ROCKET = "rocket",
+  UPay = "upay",
+  BANK = "bank_transfer",
+  VISA = "visa",
+  MASTERCARD = "master_card",
+  CASH = "cash",
+}
+
 export interface IOrderProduct {
   product: Types.ObjectId;
   quantity: number;
@@ -57,6 +68,12 @@ export interface IOrder {
   billingDetails?: IBillingDetails;
 
   products: IOrderProduct[];
+  
+
+  advanceDetails? : {
+    option? : AdvanceOption;
+    amount? : number;
+  }
 
   subtotal: number;
   discount: number;

@@ -11,11 +11,14 @@ export enum LeadStatus {
 }
 
 export enum SocialStatus {
-  FACEBOOK = "facebook",
-  INSTAGRAM = "instagram",
-  LINKEDIN = "linkedin",
-  YOUTUBE = "youtube",
-  TIKTOK = "tiktok",
+    BYPHONE = "by phone",
+    INSTORE = "ofline",
+    WHATSAPP = "whatsapp",
+    FACEBOOK = "facebook",
+    INSTAGRAM = "instagram",
+    LINKEDIN = "linkedin",
+    YOUTUBE = "youtube",
+    TIKTOK = "tiktok",
 }
 
 export enum LeadPriority {
