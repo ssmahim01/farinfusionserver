@@ -108,33 +108,17 @@ const updateLeadService = async (
   decodedToken: JwtPayload,
 ) => {
   const existingLead = await Lead.findById(leadId);
+    if (payload.assignedBy && decodedToken.role !== "ADMIN") {
+        throw new AppError(httpStatus.FORBIDDEN, "Only admin can assign leads to others");
 
-  if (!existingLead) {
-    throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
-  }
-
-  if (payload.assignedBy && decodedToken.role !== "ADMIN") {
-    throw new AppError(
-      httpStatus.FORBIDDEN,
-      "Only admin can assign leads to others",
-    );
-  }
-
-  const updateData: any = { ...payload };
-
-  if (payload.social) {
-    for (const key in payload.social as any) {
-      updateData[`social.${key}`] = payload.social[key as any];
     }
-  }
 
-  const updatedLead = await Lead.findByIdAndUpdate(
-    leadId,
-    { $set: updateData },
-    { new: true }
-  );
+    if (!existingLead) {
+        throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
+    }
 
-  return updatedLead;
+    const updatedLead = await Lead.findByIdAndUpdate(leadId, payload, { new: true });
+    return updatedLead;
 };
 
 

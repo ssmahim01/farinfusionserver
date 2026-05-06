@@ -3,7 +3,7 @@
 
 import httpStatus from "http-status-codes";
 import mongoose, { Types } from "mongoose";
-import { IOrderProduct, OrderStatus, OrderType } from "./order.interface";
+import { AdvanceOption, IOrderProduct, OrderStatus, OrderType } from "./order.interface";
 import { Counter, Order } from "./order.model";
 import { calculateOrderPrice } from "../../utils/calculateOrderTotal";
 import { Payment } from "../payment/payment.model";
@@ -36,6 +36,10 @@ interface TCreateOrderPayload {
     email: string;
     phone?: string;
     address?: string;
+  };
+  advanceDetails: {
+    option: string,
+    amount : number,
   };
   user?: string;
   seller?: string;
@@ -95,6 +99,7 @@ const checkCustomerOrder = async (phone: string) => {
 };
 
 const createOrder = async (payload: TCreateOrderPayload) => {
+  
   const session = await mongoose.startSession();
 
   let updatedOrder;
@@ -151,6 +156,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       sanitizedProducts as unknown as IOrderProduct[],
       payload.shippingCost || 0,
     );
+    
 
     const isScheduled = payload.scheduleType === "SCHEDULED";
 
@@ -185,6 +191,12 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       isPublished: isScheduled ? false : true,
 
       orderStatus: OrderStatus.PENDING,
+      advanceDetails: payload.advanceDetails?.option
+        ? {
+            option: payload.advanceDetails.option,
+            amount: payload.advanceDetails.amount || 0,
+          }
+        : undefined,
     };
 
     // console.log("ORDER PRODUCTS:", JSON.stringify(orderDoc.products, null, 2));
@@ -202,6 +214,10 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         $inc: { usedCount: 1 },
       });
     }
+
+    // if (orderDoc.advanceDetails?.option && orderDoc.advanceDetails?.amount) {
+    //   orderDoc.total = orderDoc.total - orderDoc.advanceDetails.amount;
+    // }
 
     const isUserExist = await User.findOne({
       email: payload?.billingDetails?.email,

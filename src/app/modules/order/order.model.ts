@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { DeliveryStatus, IOrder, OrderStatus } from "./order.interface";
+import { AdvanceOption, DeliveryStatus, IOrder, OrderStatus } from "./order.interface";
 
 // customer order Id counter
 const counterSchema = new Schema({
@@ -34,6 +34,19 @@ const orderSchema = new Schema<IOrder>(
       phone: String,
       email: String,
       address: String,
+    },
+
+    advanceDetails: {
+      option: {
+        type: String,
+        enum: Object.values(AdvanceOption),
+        required: false
+      },
+      amount: {
+        type: Number,
+        default: 0,
+        required: false
+      },
     },
 
     products: [

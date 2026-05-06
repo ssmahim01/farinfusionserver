@@ -101,6 +101,9 @@ export const updateLeadZodSchema = z.object({
         .max(255, "Address must not exceed 255 characters")
         .trim()
         .optional(),
+    social : z 
+    .string({required_error: "Social Media required"})
+    .optional(),
 
     status: z
         .nativeEnum(LeadStatus, {
