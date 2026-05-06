@@ -113,25 +113,69 @@ const trackCourier = async (trackingCode: string) => {
     throw new AppError(400, "Invalid tracking response");
   }
 
-  let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
 
-  if (apiStatus === "delivered") {
+switch (apiStatus?.toLowerCase()) {
+  case "pending":
+    mappedStatus = CourierDeliveryStatus.PENDING;
+    break;
+
+  case "picked_up":
+    mappedStatus = CourierDeliveryStatus.PICKED_UP;
+    break;
+
+  case "in_review":
+    mappedStatus = CourierDeliveryStatus.IN_REVIEW;
+    break;
+
+  case "partial_delivered":
+    mappedStatus = CourierDeliveryStatus.PARTIAL;
+    break;
+
+  case "delivered":
     mappedStatus = CourierDeliveryStatus.DELIVERED;
-  } else if (apiStatus === "cancelled") {
+    break;
+
+  case "cancelled":
     mappedStatus = CourierDeliveryStatus.CANCELLED;
-  }
+    break;
+
+  case "hold":
+    mappedStatus = CourierDeliveryStatus.HOLD;
+    break;
+
+  default:
+    mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+}
 
   if (courier?.deliveryStatus !== mappedStatus) {
     courier.deliveryStatus = mappedStatus;
     courier.rawResponse = res.data;
     await courier.save();
 
-    if (mappedStatus === CourierDeliveryStatus.DELIVERED) {
-      await Order.findByIdAndUpdate(courier.order, {
-        deliveryStatus: "DELIVERED",
-        orderStatus: "COMPLETED",
-      });
-    }
+    const orderUpdate: any = {
+  deliveryStatus: mappedStatus,
+};
+
+switch (mappedStatus) {
+  case CourierDeliveryStatus.DELIVERED:
+    orderUpdate.orderStatus = OrderStatus.COMPLETED;
+    break;
+
+  case CourierDeliveryStatus.CANCELLED:
+    orderUpdate.orderStatus = OrderStatus.CANCELLED;
+    break;
+
+  case CourierDeliveryStatus.PARTIAL:
+    orderUpdate.orderStatus = OrderStatus.PARTIAL;
+    break;
+
+  default:
+    orderUpdate.orderStatus = OrderStatus.CONFIRMED;
+}
+
+await Order.findByIdAndUpdate(courier.order, orderUpdate);
+
     if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
       const order = await Order.findById(courier.order).populate(
         "products.product",

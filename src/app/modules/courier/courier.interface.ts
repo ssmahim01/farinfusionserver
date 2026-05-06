@@ -3,15 +3,15 @@ import { Types } from "mongoose";
 
 export enum CourierName {
   STEADFAST = "STEADFAST",
-  PATHAO = "PATHAO", 
-  REDX = "REDX",    
+  PATHAO = "PATHAO",
+  REDX = "REDX",
 }
 
 export enum CourierStatus {
   PENDING = "PENDING",
   CREATED = "CREATED",
-  DELIVERED = "DELIVERED", 
-  IN_TRANSIT = "IN_TRANSIT", 
+  DELIVERED = "DELIVERED",
+  IN_TRANSIT = "IN_TRANSIT",
   CANCELLED = "CANCELLED",
   FAILED = "FAILED",
 }
@@ -19,6 +19,9 @@ export enum CourierStatus {
 export enum CourierDeliveryStatus {
   PENDING = "PENDING",
   IN_TRANSIT = "IN_TRANSIT",
+  PARTIAL = "PARTIAL",
+  PICKED_UP = "PICKED_UP",
+  IN_REVIEW = "IN_REVIEW",
   DELIVERED = "DELIVERED",
   PARTIAL_DELIVERED = "PARTIAL_DELIVERED",
   CANCELLED = "CANCELLED",
@@ -28,17 +31,17 @@ export enum CourierDeliveryStatus {
 export interface ICourier {
   _id?: Types.ObjectId;
 
-  order: Types.ObjectId; 
+  order: Types.ObjectId;
 
   courierName: CourierName;
 
   consignmentId?: number;
   trackingCode?: string;
 
-  status: CourierStatus; 
+  status: CourierStatus;
   deliveryStatus: CourierDeliveryStatus;
 
-  rawResponse?: Record<string, any>; 
+  rawResponse?: Record<string, any>;
 
   isDeleted?: boolean;
 
