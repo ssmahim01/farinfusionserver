@@ -390,7 +390,7 @@ const getAllCustomers = async (query: Record<string, string>) => {
   delete query["createdAt[lte]"];
 
   const queryBuilder = new QueryBuilder(
-    User.find({ role: "CUSTOMER", isDeleted: false, ...queryObj }),
+    User.find({ role: "CUSTOMER", isDeleted: false, ...queryObj }), 
     query,
   );
 

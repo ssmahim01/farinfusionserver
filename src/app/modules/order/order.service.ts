@@ -215,9 +215,9 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       });
     }
 
-    // if (orderDoc.advanceDetails?.option && orderDoc.advanceDetails?.amount) {
-    //   orderDoc.total = orderDoc.total - orderDoc.advanceDetails.amount;
-    // }
+    if (orderDoc.advanceDetails?.option && orderDoc.advanceDetails?.amount) {
+      orderDoc.total = orderDoc.total - orderDoc.advanceDetails.amount;
+    }
 
     const isUserExist = await User.findOne({
       email: payload?.billingDetails?.email,
@@ -628,7 +628,11 @@ const updateOrder = async (orderId: string, payload: any) => {
 
   const shippingCost = payload.shippingCost ?? existingOrder.shippingCost ?? 0;
   const discount = payload.discount ?? existingOrder.discount ?? 0;
-  const total = subtotal + shippingCost - discount;
+  let total = subtotal + shippingCost - discount;
+
+  if(payload?.advanceDetails?.option && payload?.advanceDetails?.amount){
+    total = total - payload?.advanceDetails?.amount
+  }
 
   const updatedOrder = await Order.findByIdAndUpdate(
     orderId,

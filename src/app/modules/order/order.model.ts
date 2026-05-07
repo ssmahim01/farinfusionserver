@@ -40,7 +40,7 @@ const orderSchema = new Schema<IOrder>(
       option: {
         type: String,
         enum: Object.values(AdvanceOption),
-        required: false
+        required: false,
       },
       amount: {
         type: Number,
