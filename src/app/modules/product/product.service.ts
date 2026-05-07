@@ -89,8 +89,30 @@ const updateProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
   }
 
+  // your code override the totalAddedStock
+  // if (payload?.totalAddedStock !== undefined) {
+  //   product.availableStock = payload.totalAddedStock;
+  // }
+
+  // STOCK UPDATE
   if (payload?.totalAddedStock !== undefined) {
-    product.availableStock = payload.totalAddedStock;
+    const stockChange = Number(payload.totalAddedStock);
+
+    const newTotalAddedStock = (product.totalAddedStock || 0) + stockChange;
+
+    const newAvailableStock = (product.availableStock || 0) + stockChange;
+
+    if (newTotalAddedStock < 0 || newAvailableStock < 0) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Stock cannot be negative",
+      );
+    }
+
+    product.totalAddedStock = newTotalAddedStock;
+    product.availableStock = newAvailableStock;
+
+    delete payload.totalAddedStock;
   }
 
   if (payload.images) {
@@ -115,6 +137,8 @@ const updateProduct = async (
   await product.save();
   return product;
 };
+
+
 
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
@@ -246,8 +270,7 @@ const getAllProducts = async (query: Record<string, string>) => {
     const sale = salesMap.get(plain._id.toString());
     const totalSold = sale?.totalSold || 0;
 
-    const availableStock =
-      totalSold > 0 ? (plain.totalAddedStock || 0) - totalSold : plain.totalAddedStock;
+    const availableStock = totalSold > 0 ? (plain.totalAddedStock || 0) - totalSold : plain.totalAddedStock;
 
     return {
       ...plain,
