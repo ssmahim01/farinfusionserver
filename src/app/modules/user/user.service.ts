@@ -9,6 +9,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { userSearchableFields } from "./user.constants copy";
 import { Order } from "../order/order.model";
+import { Types } from "mongoose";
 
 export const getStaffStats = async (queryObj: any) => {
   const totalStaffs = await User.countDocuments({
@@ -217,7 +218,13 @@ const getMyCustomers = async (
   userId: string,
   query: Record<string, string>,
 ) => {
-  const queryObj: any = {};
+  const { searchTerm, page = "1", limit = "10" } = query;
+
+  const queryObj: any = {
+    seller: new Types.ObjectId(userId),
+    isDeleted: false,
+    isPublished: true,
+  };
 
   // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
@@ -232,40 +239,117 @@ const getMyCustomers = async (
     }
   }
 
-  // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  const skip = (Number(page) - 1) * Number(limit);
 
-  const orders = await Order.find({
-    seller: userId,
-    isDeleted: false,
-    isPublished: true,
-    ...queryObj,
-  })
-    .populate("customer", "name email phone address")
-    .select("customer billingDetails");
+  const matchStage: any = queryObj;
 
-  const customerMap = new Map();
+  if (searchTerm) {
+    matchStage.$or = [
+      {
+        "billingDetails.fullName": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.phone": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.email": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        customOrderId: {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+    ];
+  }
 
-  orders.forEach((order) => {
-    if (order.customer?._id) {
-      customerMap.set(order.customer._id.toString(), order.customer);
-    } else if (order.billingDetails?.email) {
-      customerMap.set(order.billingDetails.email, {
-        name: order.billingDetails.fullName,
-        email: order.billingDetails.email,
-        phone: order.billingDetails.phone,
-        address: order.billingDetails.address,
-      });
-    }
-  });
+  const customers = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
 
-  const customers = Array.from(customerMap.values());
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+
+        fullName: {
+          $first: "$billingDetails.fullName",
+        },
+
+        phone: {
+          $first: "$billingDetails.phone",
+        },
+
+        email: {
+          $first: "$billingDetails.email",
+        },
+
+        address: {
+          $first: "$billingDetails.address",
+        },
+
+        totalOrders: {
+          $sum: 1,
+        },
+
+        totalSpent: {
+          $sum: "$total",
+        },
+
+        customOrderIds: {
+          $push: "$customOrderId",
+        },
+
+        latestOrderDate: {
+          $max: "$createdAt",
+        },
+      },
+    },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: Number(limit),
+    },
+  ]);
+
+  const totalAgg = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+      },
+    },
+    {
+      $count: "total",
+    },
+  ]);
 
   return {
     data: customers,
     meta: {
-      total: customers.length,
+      total: totalAgg[0]?.total || 0,
+      page: Number(page),
+      limit: Number(limit),
     },
   };
 };
@@ -370,7 +454,12 @@ const getAllTrashUsers = async (query: Record<string, string>) => {
 };
 
 const getAllCustomers = async (query: Record<string, string>) => {
-  const queryObj: any = {};
+  const { searchTerm, page = "1", limit = "10" } = query;
+
+  const queryObj: any = {
+    isDeleted: false,
+    isPublished: true,
+  };
 
   // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
@@ -385,35 +474,220 @@ const getAllCustomers = async (query: Record<string, string>) => {
     }
   }
 
-  // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  const skip = (Number(page) - 1) * Number(limit);
 
+<<<<<<< HEAD
   const queryBuilder = new QueryBuilder(
     User.find({ role: "CUSTOMER", isDeleted: false, ...queryObj }), 
     query,
   );
+=======
+  const matchStage: any = queryObj;
+>>>>>>> 568ddf64a705cff0bbea77f8ff4af3c606de4156
 
-  const usersData = queryBuilder
-    .filter()
-    .search(userSearchableFields)
-    .sort()
-    .fields()
-    .paginate();
+  // SEARCH
+  if (searchTerm) {
+    matchStage.$or = [
+      {
+        "billingDetails.fullName": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.phone": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.email": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        customOrderId: {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+    ];
+  }
 
-  const [data, meta] = await Promise.all([
-    usersData.build(),
-    queryBuilder.getMeta(),
+  const aggregate = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+
+    // SORT NEWEST FIRST
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+
+    // GROUP BY PHONE
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+
+        fullName: {
+          $first: "$billingDetails.fullName",
+        },
+
+        phone: {
+          $first: "$billingDetails.phone",
+        },
+
+        email: {
+          $first: "$billingDetails.email",
+        },
+
+        address: {
+          $first: "$billingDetails.address",
+        },
+
+        totalOrders: {
+          $sum: 1,
+        },
+
+        totalSpent: {
+          $sum: "$total",
+        },
+
+        latestOrderDate: {
+          $max: "$createdAt",
+        },
+
+        customOrderIds: {
+          $push: "$customOrderId",
+        },
+
+        orders: {
+          $push: {
+            _id: "$_id",
+            customOrderId: "$customOrderId",
+            total: "$total",
+            orderStatus: "$orderStatus",
+            deliveryStatus: "$deliveryStatus",
+            createdAt: "$createdAt",
+          },
+        },
+
+        seller: {
+          $first: "$seller",
+        },
+      },
+    },
+
+    // LOOKUP SELLER
+    {
+      $lookup: {
+        from: "users",
+        localField: "seller",
+        foreignField: "_id",
+        as: "seller",
+      },
+    },
+
+    {
+      $unwind: {
+        path: "$seller",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    // LOOKUP LEAD
+    {
+      $lookup: {
+        from: "leads",
+        localField: "phone",
+        foreignField: "phone",
+        as: "leadInfo",
+      },
+    },
+
+    {
+      $unwind: {
+        path: "$leadInfo",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+
+        fullName: 1,
+        phone: 1,
+        email: 1,
+        address: 1,
+
+        totalOrders: 1,
+        totalSpent: 1,
+        latestOrderDate: 1,
+
+        customOrderIds: 1,
+        orders: 1,
+
+        seller: {
+          _id: 1,
+          name: 1,
+          role: 1,
+        },
+
+        leadInfo: {
+          _id: 1,
+          status: 1,
+          priority: 1,
+          social: 1,
+        },
+      },
+    },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: Number(limit),
+    },
+  ]);
+
+  // TOTAL COUNT
+  const totalAgg = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+      },
+    },
+    {
+      $count: "total",
+    },
   ]);
 
   return {
-    data,
-    meta,
+    data: aggregate,
+    meta: {
+      total: totalAgg[0]?.total || 0,
+      page: Number(page),
+      limit: Number(limit),
+      totalPage: Math.ceil((totalAgg[0]?.total || 0) / Number(limit)),
+    },
   };
 };
 
 const getAllTrashCustomers = async (query: Record<string, string>) => {
-  const queryObj: any = {};
+  const { searchTerm, page = "1", limit = "10" } = query;
+
+  const queryObj: any = {
+    isDeleted: true,
+    isPublished: true,
+  };
 
   // DATE FILTER
   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
@@ -428,30 +702,131 @@ const getAllTrashCustomers = async (query: Record<string, string>) => {
     }
   }
 
-  // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  const skip = (Number(page) - 1) * Number(limit);
 
-  const queryBuilder = new QueryBuilder(
-    User.find({ role: "CUSTOMER", isDeleted: true, ...queryObj }),
-    query,
-  );
+  const matchStage: any = queryObj;
 
-  const usersData = queryBuilder
-    .filter()
-    .search(userSearchableFields)
-    .sort()
-    .fields()
-    .paginate();
+  // SEARCH
+  if (searchTerm) {
+    matchStage.$or = [
+      {
+        "billingDetails.fullName": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.phone": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        "billingDetails.email": {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+      {
+        customOrderId: {
+          $regex: searchTerm,
+          $options: "i",
+        },
+      },
+    ];
+  }
 
-  const [data, meta] = await Promise.all([
-    usersData.build(),
-    queryBuilder.getMeta(),
+  const aggregate = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+
+        fullName: {
+          $first: "$billingDetails.fullName",
+        },
+
+        phone: {
+          $first: "$billingDetails.phone",
+        },
+
+        email: {
+          $first: "$billingDetails.email",
+        },
+
+        address: {
+          $first: "$billingDetails.address",
+        },
+
+        totalOrders: {
+          $sum: 1,
+        },
+
+        totalSpent: {
+          $sum: "$total",
+        },
+
+        latestOrderDate: {
+          $max: "$createdAt",
+        },
+
+        customOrderIds: {
+          $push: "$customOrderId",
+        },
+
+        orders: {
+          $push: {
+            _id: "$_id",
+            customOrderId: "$customOrderId",
+            total: "$total",
+            orderStatus: "$orderStatus",
+            deliveryStatus: "$deliveryStatus",
+            createdAt: "$createdAt",
+          },
+        },
+      },
+    },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: Number(limit),
+    },
+  ]);
+
+  const totalAgg = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+    {
+      $group: {
+        _id: "$billingDetails.phone",
+      },
+    },
+    {
+      $count: "total",
+    },
   ]);
 
   return {
-    data,
-    meta,
+    data: aggregate,
+    meta: {
+      total: totalAgg[0]?.total || 0,
+      page: Number(page),
+      limit: Number(limit),
+      totalPage: Math.ceil((totalAgg[0]?.total || 0) / Number(limit)),
+    },
   };
 };
 

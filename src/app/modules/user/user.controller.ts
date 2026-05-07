@@ -11,6 +11,8 @@ import { sendResponse } from "../../utils/sendResponse";
 import { catchAsync } from "../../utils/catchAsync";
 import { User } from "./user.model";
 import { CommonTrashService } from "../common/CommonTrashService";
+import { Order } from "../order/order.model";
+import AppError from "../../errorHelpers/appError";
 
 const createUser = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -127,7 +129,7 @@ const getAllUsers = catchAsync(
 const getAllTrashUsers = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
-    const result = await UserServices.getAllTrashUsers(
+    const result = await UserServices.getAllTrashCustomers(
       query as Record<string, string>,
     );
 
@@ -197,22 +199,42 @@ const updateProfile = catchAsync(
 );
 
 // update user trash
-const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
-  const id = req.params.id as string;
+const updateCustomerTrash = catchAsync(async (req: Request, res: Response) => {
+  const phone = req.params.id as string;
 
-  // @ts-expect-error
-  const Data = await CommonTrashService(id, User);
+  const order = await Order.findOne({
+    "billingDetails.phone": phone,
+  });
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+  }
+
+  const newTrashState = !order.isDeleted;
+
+  await Order.updateMany(
+    {
+      "billingDetails.phone": phone,
+    },
+    {
+      $set: {
+        isDeleted: newTrashState,
+      },
+    },
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Trash Status Updated",
-    data: Data,
+    message: `Customer ${
+      newTrashState ? "moved to trash" : "restored"
+    } successfully`,
+    data: null,
   });
 });
 
 // update customer trash
-const updateCustomerTrash = catchAsync(async (req: Request, res: Response) => {
+const updateUserTrash = catchAsync(async (req: Request, res: Response) => {
   const id = req.params.id as string;
 
   // @ts-expect-error
