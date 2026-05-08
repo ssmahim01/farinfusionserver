@@ -172,7 +172,7 @@ const getSingleProduct = async (slug: string) => {
 
   const plain = product.toObject();
 
-  const availableStock = (plain.totalAddedStock || 0) - totalSold;
+  const availableStock = Math.max((plain.totalAddedStock || 0) - totalSold, 0);
 
   return {
     data: {
@@ -244,7 +244,7 @@ const getAllProducts = async (query: Record<string, string>) => {
     isDeleted: false,
   };
 
-   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
     productQuery.createdAt = {};
 
     if (query["createdAt[gte]"]) {
@@ -304,10 +304,9 @@ const getAllProducts = async (query: Record<string, string>) => {
     const sale = salesMap.get(plain._id.toString());
     const totalSold = sale?.totalSold || 0;
 
-    const availableStock =
-      totalSold > 0
-        ? (plain.totalAddedStock || 0) - totalSold
-        : plain.totalAddedStock;
+    const calculatedStock = (plain.totalAddedStock || 0) - totalSold;
+
+    const availableStock = Math.max(calculatedStock, 0);
 
     return {
       ...plain,

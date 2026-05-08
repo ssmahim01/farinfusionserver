@@ -303,7 +303,7 @@ const getDashboardOverview = async (
 
         totalRevenueInPeriod: {
           $sum: {
-            $multiply: ["$products.quantity", "$products.price"],
+            $multiply: ["$products.price", "$products.quantity"],
           },
         },
 
@@ -321,7 +321,27 @@ const getDashboardOverview = async (
         as: "product",
       },
     },
-    { $unwind: "$product" },
+    {
+      $unwind: {
+        path: "$product",
+        preserveNullAndEmptyArrays: false,
+      },
+    },
+    {
+      $addFields: {
+        availableStock: {
+          $max: [
+            {
+              $subtract: [
+                { $ifNull: ["$product.totalAddedStock", 0] },
+                "$totalSoldInPeriod",
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
 
     {
       $project: {
@@ -330,7 +350,7 @@ const getDashboardOverview = async (
         price: "$product.price",
         buyingPrice: "$product.buyingPrice",
         images: "$product.images",
-        availableStock: "$product.availableStock",
+        availableStock: 1,
         totalSoldInPeriod: 1,
         totalRevenueInPeriod: 1,
         orderCount: 1,
@@ -352,8 +372,11 @@ const getDashboardOverview = async (
         _id: "$products.product",
         totalSoldInPeriod: { $sum: "$products.quantity" },
         totalRevenueInPeriod: {
-          $sum: "$total",
+          $sum: {
+            $multiply: ["$products.price", "$products.quantity"],
+          },
         },
+
         orderCount: { $sum: 1 },
       },
     },
@@ -368,6 +391,21 @@ const getDashboardOverview = async (
     },
     { $unwind: { path: "$product", preserveNullAndEmptyArrays: false } },
     {
+      $addFields: {
+        availableStock: {
+          $max: [
+            {
+              $subtract: [
+                { $ifNull: ["$product.totalAddedStock", 0] },
+                "$totalSoldInPeriod",
+              ],
+            },
+            0,
+          ],
+        },
+      },
+    },
+    {
       $project: {
         productId: "$product._id",
         title: "$product.title",
@@ -375,7 +413,7 @@ const getDashboardOverview = async (
         discountPrice: "$product.discountPrice",
         buyingPrice: "$product.buyingPrice",
         images: "$product.images",
-        availableStock: "$product.availableStock",
+        availableStock: 1,
         totalSold: { $sum: "$products.quantity" },
         totalSoldInPeriod: 1,
         totalRevenueInPeriod: 1,
