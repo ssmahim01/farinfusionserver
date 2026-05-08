@@ -103,10 +103,7 @@ const updateProduct = async (
     const newAvailableStock = (product.availableStock || 0) + stockChange;
 
     if (newTotalAddedStock < 0 || newAvailableStock < 0) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "Stock cannot be negative",
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, "Stock cannot be negative");
     }
 
     product.totalAddedStock = newTotalAddedStock;
@@ -137,8 +134,6 @@ const updateProduct = async (
   await product.save();
   return product;
 };
-
-
 
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
@@ -208,23 +203,20 @@ const deleteProduct = async (id: string) => {
 
 const getAllProducts = async (query: Record<string, string>) => {
   const orderMatch: any = {};
+  // console.log(query);
 
   // DATE FILTER
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    orderMatch.createdAt = {};
+  // if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+  //   orderMatch.createdAt = {};
 
-    if (query["createdAt[gte]"]) {
-      orderMatch.createdAt.$gte = new Date(query["createdAt[gte]"]);
-    }
+  //   if (query["createdAt[gte]"]) {
+  //     orderMatch.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  //   }
 
-    if (query["createdAt[lte]"]) {
-      orderMatch.createdAt.$lte = new Date(query["createdAt[lte]"]);
-    }
-  }
-
-  // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  //   if (query["createdAt[lte]"]) {
+  //     orderMatch.createdAt.$lte = new Date(query["createdAt[lte]"]);
+  //   }
+  // }
 
   const sales = await Order.aggregate([
     { $match: orderMatch },
@@ -247,8 +239,50 @@ const getAllProducts = async (query: Record<string, string>) => {
     salesMap.set(item._id.toString(), item);
   });
 
+  // PRODUCT QUERY
+  const productQuery: any = {
+    isDeleted: false,
+  };
+
+   if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    productQuery.createdAt = {};
+
+    if (query["createdAt[gte]"]) {
+      productQuery.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      productQuery.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
+  }
+
+  // STOCK FILTER
+  if (query.stockFilter === "outOfStock") {
+    productQuery.availableStock = {
+      $lte: 0,
+    };
+  }
+
+  if (query.stockFilter === "lowStock") {
+    productQuery.availableStock = {
+      $gt: 0,
+      $lte: 5,
+    };
+  }
+
+  if (query.stockFilter === "inStock") {
+    productQuery.availableStock = {
+      $gt: 5,
+    };
+  }
+
+  // REMOVE SPECIAL FIELDS
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
+  delete query.stockFilter;
+
   const queryBuilder = new QueryBuilder(
-    Product.find({ isDeleted: false }).populate("category"),
+    Product.find(productQuery).populate("category"),
     query,
   );
 
@@ -270,7 +304,10 @@ const getAllProducts = async (query: Record<string, string>) => {
     const sale = salesMap.get(plain._id.toString());
     const totalSold = sale?.totalSold || 0;
 
-    const availableStock = totalSold > 0 ? (plain.totalAddedStock || 0) - totalSold : plain.totalAddedStock;
+    const availableStock =
+      totalSold > 0
+        ? (plain.totalAddedStock || 0) - totalSold
+        : plain.totalAddedStock;
 
     return {
       ...plain,
