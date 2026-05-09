@@ -476,10 +476,6 @@ const getAllCustomers = async (query: Record<string, string>) => {
 
   const skip = (Number(page) - 1) * Number(limit);
 
-  const queryBuilder = new QueryBuilder(
-    User.find({ role: "CUSTOMER", isDeleted: false, ...queryObj }), 
-    query,
-  );
   const matchStage: any = queryObj;
 
   // SEARCH
