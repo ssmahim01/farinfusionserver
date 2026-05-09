@@ -146,7 +146,13 @@ const getSingleProduct = async (slug: string) => {
 
   const sales = await Order.aggregate([
     {
-      $match: {},
+      $match: {
+        isDeleted: false,
+        isPublished: true,
+        orderStatus: {
+          $ne: "CANCELLED",
+        },
+      },
     },
     { $unwind: "$products" },
     {
@@ -160,7 +166,15 @@ const getSingleProduct = async (slug: string) => {
         totalSold: { $sum: "$products.quantity" },
         totalRevenue: {
           $sum: {
-            $multiply: ["$products.price", "$products.quantity"],
+            $cond: [
+              {
+                $eq: ["$orderStatus", "COMPLETED"],
+              },
+              {
+                $multiply: ["$products.price", "$products.quantity"],
+              },
+              0,
+            ],
           },
         },
       },
@@ -202,7 +216,10 @@ const deleteProduct = async (id: string) => {
 };
 
 const getAllProducts = async (query: Record<string, string>) => {
-  const orderMatch: any = {};
+  const orderMatch: any = {
+    isDeleted: false,
+    isPublished: true,
+  };
   // console.log(query);
 
   // DATE FILTER
@@ -219,7 +236,14 @@ const getAllProducts = async (query: Record<string, string>) => {
   // }
 
   const sales = await Order.aggregate([
-    { $match: orderMatch },
+    {
+      $match: {
+        ...orderMatch,
+        orderStatus: {
+          $ne: "CANCELLED",
+        },
+      },
+    },
     { $unwind: "$products" },
     {
       $group: {
@@ -227,7 +251,15 @@ const getAllProducts = async (query: Record<string, string>) => {
         totalSold: { $sum: "$products.quantity" },
         totalRevenue: {
           $sum: {
-            $multiply: ["$products.price", "$products.quantity"],
+            $cond: [
+              {
+                $eq: ["$orderStatus", "COMPLETED"],
+              },
+              {
+                $multiply: ["$products.price", "$products.quantity"],
+              },
+              0,
+            ],
           },
         },
       },
