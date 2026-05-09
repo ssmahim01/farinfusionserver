@@ -20,6 +20,7 @@ const userSchema = new Schema<IUser>(
         "user-management",
         "staff-management",
         "product-management",
+        "purchase-products",
         "category-management",
         "brand-management",
         "inventory",
