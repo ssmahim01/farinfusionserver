@@ -50,13 +50,24 @@ const updatePurchaseStatus = catchAsync(async (req: Request, res: Response) => {
 
   const result = await ProductPurchaseServices.updatePurchaseStatus(
     id,
-    req.body.purchaseStatus,
+    req.body,
   );
 
   sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Purchase status updated successfully",
+    data: result,
+  });
+});
+
+const getPurchaseStats = catchAsync(async (req, res) => {
+  const result = await ProductPurchaseServices.getPurchaseStats();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Purchase stats retrieved successfully",
     data: result,
   });
 });
@@ -95,4 +106,5 @@ export const ProductPurchaseControllers = {
   getSinglePurchase,
   updatePurchase,
   deletePurchase,
+  getPurchaseStats,
 };

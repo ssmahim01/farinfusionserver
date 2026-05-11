@@ -13,16 +13,21 @@ export enum PaymentStatus {
   PAID = "PAID",
 }
 
-export interface IProductPurchase {
+export interface IPurchaseProduct {
   product: Types.ObjectId;
+  quantity: number;
+  buyingPrice: number;
+  totalAmount: number;
+}
+
+export interface IProductPurchase {
+  products: IPurchaseProduct[];
 
   supplierName: string;
   supplierPhone?: string;
   supplierAddress?: string;
 
-  quantity: number;
-  buyingPrice: number;
-  totalAmount?: number;
+  grandTotal?: number;
 
   purchaseDate: Date;
 

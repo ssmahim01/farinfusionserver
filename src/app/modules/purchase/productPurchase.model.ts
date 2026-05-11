@@ -5,11 +5,41 @@ import {
   PurchaseStatus,
 } from "./productPurchase.interface";
 
-const productPurchaseSchema = new Schema<IProductPurchase>(
+const purchaseProductSchema = new Schema(
   {
     product: {
       type: Schema.Types.ObjectId,
       ref: "Product",
+      required: true,
+    },
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    buyingPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+const productPurchaseSchema = new Schema<IProductPurchase>(
+  {
+    products: {
+      type: [purchaseProductSchema],
       required: true,
     },
 
@@ -29,19 +59,7 @@ const productPurchaseSchema = new Schema<IProductPurchase>(
       trim: true,
     },
 
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
-
-    buyingPrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
-    totalAmount: {
+    grandTotal: {
       type: Number,
       required: false,
       min: 0,
@@ -65,20 +83,11 @@ const productPurchaseSchema = new Schema<IProductPurchase>(
       default: PurchaseStatus.PENDING,
     },
 
-    invoiceNo: {
-      type: String,
-      trim: true,
-    },
+    invoiceNo: String,
 
-    reference: {
-      type: String,
-      trim: true,
-    },
+    reference: String,
 
-    notes: {
-      type: String,
-      trim: true,
-    },
+    notes: String,
 
     createdBy: {
       type: Schema.Types.ObjectId,

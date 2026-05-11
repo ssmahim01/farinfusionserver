@@ -11,23 +11,27 @@ const createPurchase = async (
   payload: Partial<IProductPurchase>,
   user: JwtPayload,
 ) => {
-  const product = await Product.findById(payload.product);
-
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+  if (!payload.products?.length) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Products are required");
   }
 
   payload.createdBy = user.userId;
 
   const purchase = await ProductPurchase.create(payload);
 
+  // STOCK ADD
   if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    product.totalAddedStock =
-      (product.totalAddedStock || 0) + purchase.quantity;
+    for (const item of purchase.products) {
+      const product = await Product.findById(item.product);
 
-    product.availableStock = (product.availableStock || 0) + purchase.quantity;
+      if (!product) continue;
 
-    await product.save();
+      product.totalAddedStock = (product.totalAddedStock || 0) + item.quantity;
+
+      product.availableStock = (product.availableStock || 0) + item.quantity;
+
+      await product.save();
+    }
   }
 
   return purchase;
@@ -36,7 +40,7 @@ const createPurchase = async (
 const getAllPurchases = async (query: Record<string, string>) => {
   const queryBuilder = new QueryBuilder(
     ProductPurchase.find({ isDeleted: false })
-      .populate("product")
+      .populate("products.product")
       .populate("createdBy", "name email"),
     query,
   );
@@ -61,7 +65,7 @@ const getAllPurchases = async (query: Record<string, string>) => {
 
 const getSinglePurchase = async (id: string) => {
   const purchase = await ProductPurchase.findById(id)
-    .populate("product")
+    .populate("products.product")
     .populate("createdBy", "name email");
 
   if (!purchase) {
@@ -81,97 +85,155 @@ const updatePurchase = async (
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  const product = await Product.findById(purchase.product);
-
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, "Product not found");
-  }
-
-  const oldQuantity = purchase.quantity;
-  const newQuantity = payload.quantity ?? oldQuantity;
-
-  const oldStatus = purchase.purchaseStatus;
-  const newStatus = payload.purchaseStatus ?? oldStatus;
-
-  // SAFE DEFAULT VALUES
-  const currentTotalAddedStock = product.totalAddedStock ?? 0;
-  const currentAvailableStock = product.availableStock ?? 0;
-
   // rollback old stock
-  if (oldStatus === PurchaseStatus.RECEIVED) {
-    product.totalAddedStock = currentTotalAddedStock - oldQuantity;
+  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
+    for (const item of purchase.products) {
+      const product = await Product.findById(item.product);
 
-    product.availableStock = currentAvailableStock - oldQuantity;
+      if (!product) continue;
+
+      product.totalAddedStock = Math.max(
+        (product.totalAddedStock || 0) - item.quantity,
+        0,
+      );
+
+      product.availableStock = Math.max(
+        (product.availableStock || 0) - item.quantity,
+        0,
+      );
+
+      await product.save();
+    }
   }
-
-  // apply new stock
-  if (newStatus === PurchaseStatus.RECEIVED) {
-    product.totalAddedStock = (product.totalAddedStock ?? 0) + newQuantity;
-
-    product.availableStock = (product.availableStock ?? 0) + newQuantity;
-  }
-
-  // prevent negative stock
-  product.totalAddedStock = Math.max(product.totalAddedStock ?? 0, 0);
-
-  product.availableStock = Math.max(product.availableStock ?? 0, 0);
-
-  await product.save();
 
   Object.assign(purchase, payload);
+
+  // apply new stock
+  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
+    for (const item of purchase.products) {
+      const product = await Product.findById(item.product);
+
+      if (!product) continue;
+
+      product.totalAddedStock = (product.totalAddedStock || 0) + item.quantity;
+
+      product.availableStock = (product.availableStock || 0) + item.quantity;
+
+      await product.save();
+    }
+  }
 
   await purchase.save();
 
   return purchase;
 };
 
-const updatePurchaseStatus = async (id: string, status: PurchaseStatus) => {
+const updatePurchaseStatus = async (
+  id: string,
+  payload: {
+    purchaseStatus?: PurchaseStatus;
+    paymentStatus?: string;
+  },
+) => {
   const purchase = await ProductPurchase.findById(id);
 
   if (!purchase) {
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  const product = await Product.findById(purchase.product);
+  const oldPurchaseStatus = purchase.purchaseStatus;
 
-  if (!product) {
-    throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+  const newPurchaseStatus = payload.purchaseStatus ?? oldPurchaseStatus;
+
+  // prevent duplicate stock update
+  if (oldPurchaseStatus !== newPurchaseStatus) {
+    // rollback old stock
+    if (oldPurchaseStatus === PurchaseStatus.RECEIVED) {
+      for (const item of purchase.products) {
+        const product = await Product.findById(item.product);
+
+        if (!product) continue;
+
+        product.totalAddedStock = Math.max(
+          (product.totalAddedStock || 0) - item.quantity,
+          0,
+        );
+
+        product.availableStock = Math.max(
+          (product.availableStock || 0) - item.quantity,
+          0,
+        );
+
+        await product.save();
+      }
+    }
+
+    // apply new stock
+    if (newPurchaseStatus === PurchaseStatus.RECEIVED) {
+      for (const item of purchase.products) {
+        const product = await Product.findById(item.product);
+
+        if (!product) continue;
+
+        product.totalAddedStock =
+          (product.totalAddedStock || 0) + item.quantity;
+
+        product.availableStock = (product.availableStock || 0) + item.quantity;
+
+        await product.save();
+      }
+    }
+
+    purchase.purchaseStatus = newPurchaseStatus;
   }
 
-  const oldStatus = purchase.purchaseStatus;
-
-  // already same status
-  if (oldStatus === status) {
-    return purchase;
+  // payment status update
+  if (payload.paymentStatus) {
+    purchase.paymentStatus = payload.paymentStatus as any;
   }
 
-  // rollback old stock if previous status was RECEIVED
-  if (oldStatus === PurchaseStatus.RECEIVED) {
-    product.totalAddedStock = Math.max(
-      (product.totalAddedStock ?? 0) - purchase.quantity,
-      0,
-    );
-
-    product.availableStock = Math.max(
-      (product.availableStock ?? 0) - purchase.quantity,
-      0,
-    );
-  }
-
-  // apply stock if new status is RECEIVED
-  if (status === PurchaseStatus.RECEIVED) {
-    product.totalAddedStock =
-      (product.totalAddedStock ?? 0) + purchase.quantity;
-
-    product.availableStock = (product.availableStock ?? 0) + purchase.quantity;
-  }
-
-  purchase.purchaseStatus = status;
-
-  await product.save();
   await purchase.save();
 
-  return purchase;
+  return await ProductPurchase.findById(id)
+    .populate("products.product")
+    .populate("createdBy", "name email");
+};
+
+const getPurchaseStats = async () => {
+  const purchases = await ProductPurchase.find({
+    isDeleted: false,
+  }).populate("products.product");
+
+  const totalPurchases = purchases.length;
+
+  const totalAmount = purchases.reduce(
+    (sum, purchase: any) => sum + (purchase.grandTotal || 0),
+    0,
+  );
+
+  const pendingPayments = purchases.filter(
+    (purchase) => purchase.paymentStatus !== "PAID",
+  ).length;
+
+  const totalProfit = purchases.reduce((sum: number, purchase: any) => {
+    const purchaseProfit =
+      purchase.products?.reduce((acc: number, item: any) => {
+        const sellingPrice = item.product?.price || 0;
+
+        const buyingPrice = item.buyingPrice || 0;
+
+        return acc + (sellingPrice - buyingPrice) * item.quantity;
+      }, 0) || 0;
+
+    return sum + purchaseProfit;
+  }, 0);
+
+  return {
+    totalPurchases,
+    totalAmount,
+    totalProfit,
+    pendingPayments,
+  };
 };
 
 const deletePurchase = async (id: string) => {
@@ -181,22 +243,24 @@ const deletePurchase = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  const product = await Product.findById(purchase.product);
+  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
+    for (const item of purchase.products) {
+      const product = await Product.findById(item.product);
 
-  if (product && purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    const currentTotalAddedStock = product.totalAddedStock ?? 0;
+      if (!product) continue;
 
-    const currentAvailableStock = product.availableStock ?? 0;
+      product.totalAddedStock = Math.max(
+        (product.totalAddedStock || 0) - item.quantity,
+        0,
+      );
 
-    product.totalAddedStock = currentTotalAddedStock - purchase.quantity;
+      product.availableStock = Math.max(
+        (product.availableStock || 0) - item.quantity,
+        0,
+      );
 
-    product.availableStock = currentAvailableStock - purchase.quantity;
-
-    product.totalAddedStock = Math.max(product.totalAddedStock ?? 0, 0);
-
-    product.availableStock = Math.max(product.availableStock ?? 0, 0);
-
-    await product.save();
+      await product.save();
+    }
   }
 
   purchase.isDeleted = true;
@@ -212,5 +276,6 @@ export const ProductPurchaseServices = {
   getSinglePurchase,
   updatePurchase,
   updatePurchaseStatus,
+  getPurchaseStats,
   deletePurchase,
 };

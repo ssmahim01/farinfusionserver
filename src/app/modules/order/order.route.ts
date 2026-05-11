@@ -102,6 +102,11 @@ router.patch(
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.updateCompleteOrder,
 );
+router.patch(
+  "/:id/cancel-status",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.updateOrderCancelStatus,
+);
 
 router.post("/exchange", OrderControllers.exchangeOrderItem);
 
