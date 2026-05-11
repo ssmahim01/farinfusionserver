@@ -3,7 +3,13 @@
 
 import httpStatus from "http-status-codes";
 import mongoose, { Types } from "mongoose";
-import { AdvanceOption, IOrderProduct, OrderStatus, OrderType } from "./order.interface";
+import {
+  AdvanceOption,
+  DeliveryStatus,
+  IOrderProduct,
+  OrderStatus,
+  OrderType,
+} from "./order.interface";
 import { Counter, Order } from "./order.model";
 import { calculateOrderPrice } from "../../utils/calculateOrderTotal";
 import { Payment } from "../payment/payment.model";
@@ -38,8 +44,8 @@ interface TCreateOrderPayload {
     address?: string;
   };
   advanceDetails: {
-    option: string,
-    amount : number,
+    option: string;
+    amount: number;
   };
   user?: string;
   seller?: string;
@@ -99,7 +105,6 @@ const checkCustomerOrder = async (phone: string) => {
 };
 
 const createOrder = async (payload: TCreateOrderPayload) => {
-  
   const session = await mongoose.startSession();
 
   let updatedOrder;
@@ -156,7 +161,6 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       sanitizedProducts as unknown as IOrderProduct[],
       payload.shippingCost || 0,
     );
-    
 
     const isScheduled = payload.scheduleType === "SCHEDULED";
 
@@ -389,6 +393,98 @@ const deleteOrder = async (id: string) => {
     session.endSession();
 
     return { data: null };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+const updateOrderCancelStatus = async (
+  orderId: string,
+  payload: {
+    orderStatus?: string;
+    deliveryStatus?: string;
+  },
+) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const existingOrder = await Order.findById(orderId).session(session);
+
+    if (!existingOrder) {
+      throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+    }
+
+    const previousStatus = existingOrder.orderStatus;
+
+    const newOrderStatus = payload.orderStatus || previousStatus;
+
+    if (previousStatus !== "CANCELLED" && newOrderStatus === "CANCELLED") {
+      if (!(existingOrder as any).isRestocked) {
+        for (const item of existingOrder.products) {
+          await Product.findByIdAndUpdate(
+            item.product,
+            {
+              $inc: {
+                availableStock: item.quantity,
+                totalSold: -item.quantity,
+              },
+            },
+            { session },
+          );
+        }
+
+        (existingOrder as any).isRestocked = true;
+      }
+
+      existingOrder.deliveryStatus = DeliveryStatus.CANCELLED;
+    }
+
+    if (previousStatus === "CANCELLED" && newOrderStatus !== "CANCELLED") {
+      if ((existingOrder as any).isRestocked) {
+        for (const item of existingOrder.products) {
+          await Product.findByIdAndUpdate(
+            item.product,
+            {
+              $inc: {
+                availableStock: -item.quantity,
+                totalSold: item.quantity,
+              },
+            },
+            { session },
+          );
+        }
+
+        (existingOrder as any).isRestocked = false;
+      }
+    }
+
+    if (payload.orderStatus) {
+      existingOrder.orderStatus = payload.orderStatus as any;
+    }
+
+    if (payload.deliveryStatus) {
+      existingOrder.deliveryStatus = payload.deliveryStatus as any;
+    }
+
+    // auto sync
+    if (payload.orderStatus === "COMPLETED") {
+      existingOrder.deliveryStatus = DeliveryStatus.DELIVERED;
+    }
+
+    await existingOrder.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return await Order.findById(orderId)
+      .populate("customer", "name email _id role phone")
+      .populate("seller", "name email _id role phone")
+      .populate("payment")
+      .populate("products.product");
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -630,8 +726,8 @@ const updateOrder = async (orderId: string, payload: any) => {
   const discount = payload.discount ?? existingOrder.discount ?? 0;
   let total = subtotal + shippingCost - discount;
 
-  if(payload?.advanceDetails?.option && payload?.advanceDetails?.amount){
-    total = total - payload?.advanceDetails?.amount
+  if (payload?.advanceDetails?.option && payload?.advanceDetails?.amount) {
+    total = total - payload?.advanceDetails?.amount;
   }
 
   const updatedOrder = await Order.findByIdAndUpdate(
@@ -1115,9 +1211,6 @@ const getMyHoldOrders = async (
   return { data, meta };
 };
 
-
-
-
 const getAllDamagedProducts = async () => {
   const orders = await Order.find({ isDeleted: false, isPublished: true })
     .populate("products.product")
@@ -1163,7 +1256,7 @@ export const OrderServices = {
   markOrderDamage,
   getMyScheduledOrders,
   getMyOrders,
-
+  updateOrderCancelStatus,
   getAllHoldOrders,
-  getMyHoldOrders
+  getMyHoldOrders,
 };

@@ -78,6 +78,28 @@ const getSingleOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateOrderCancelStatus = catchAsync(
+  async (req: Request, res: Response) => {
+    const orderId = req.params.id;
+    const { orderStatus, deliveryStatus } = req.body;
+
+    const result = await OrderServices.updateOrderCancelStatus(
+      orderId as string,
+      {
+        orderStatus,
+        deliveryStatus,
+      },
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Order status updated successfully",
+      data: result,
+    });
+  },
+);
+
 const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id;
   const { orderStatus } = req.body;
@@ -199,78 +221,81 @@ const deleteOrder = catchAsync(async (req: Request, res: Response) => {
 export const partialUpdateOrder = async (req: Request, res: Response) => {
   const session = await mongoose.startSession();
 
-    session.startTransaction();
+  session.startTransaction();
 
-    const { orderId, removeItems, addItems, note } = req.body;
+  const { orderId, removeItems, addItems, note } = req.body;
 
-    const order = await Order.findById(orderId).session(session);
+  const order = await Order.findById(orderId).session(session);
 
-    if (!order) {
-      throw new Error("Order not found");
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  for (const r of removeItems) {
+    const item = order.products[r.itemIndex];
+
+    if (!item) throw new Error("Invalid item index");
+
+    if (r.quantity > item.quantity) {
+      throw new Error("Invalid remove quantity");
     }
 
-    for (const r of removeItems) {
-      const item = order.products[r.itemIndex];
+    // reduce quantity
+    item.quantity -= r.quantity;
 
-      if (!item) throw new Error("Invalid item index");
+    // restore stock
+    await Product.findByIdAndUpdate(
+      item.product,
+      { $inc: { stock: r.quantity } },
+      { session },
+    );
 
-      if (r.quantity > item.quantity) {
-        throw new Error("Invalid remove quantity");
-      }
+    // remove if zero
+    if (item.quantity === 0) {
+      order.products.splice(r.itemIndex, 1);
+    }
+  }
 
-      // reduce quantity
-      item.quantity -= r.quantity;
+  for (const a of addItems) {
+    const product = await Product.findById(a.productId).session(session);
 
-      // restore stock
-      await Product.findByIdAndUpdate(
-        item.product,
-        { $inc: { stock: r.quantity } },
-        { session },
-      );
+    if (!product) throw new Error("Product not found");
 
-      // remove if zero
-      if (item.quantity === 0) {
-        order.products.splice(r.itemIndex, 1);
-      }
+    if ((product.availableStock ?? 0) < a.quantity) {
+      throw new Error("Insufficient stock");
     }
 
-    for (const a of addItems) {
-      const product = await Product.findById(a.productId).session(session);
+    // reduce stock
+    product.availableStock = (product.availableStock ?? 0) - a.quantity;
+    await product.save({ session });
 
-      if (!product) throw new Error("Product not found");
-
-      if ((product.availableStock ?? 0) < a.quantity) {
-        throw new Error("Insufficient stock");
-      }
-
-      // reduce stock
-      product.availableStock = (product.availableStock ?? 0) - a.quantity;
-      await product.save({ session });
-
-      // push item
-      order.products.push({
-        product: product._id,
-        title: product.title,
-        price: product.price,
-        quantity: a.quantity,
-      });
-    }
-
-    order.total = order.products.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
-    order.partialNotes = note || "";
-
-    await order.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Order partially updated",
-      data: order,
+    // push item
+    order.products.push({
+      product: product._id,
+      title: product.title,
+      price: product.price,
+      quantity: a.quantity,
     });
+  }
+
+  order.total = order.products.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0,
+  );
+
+  order.partialNotes = note || "";
+
+  await order.save({ session });
+
+  await session.commitTransaction();
+  session.endSession();
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Order partially updated",
+    data: order,
+  });
 };
 
 const exchangeOrderItem = catchAsync(async (req: Request, res: Response) => {
@@ -291,16 +316,18 @@ const exchangeOrderItem = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getAllDamagedProducts = catchAsync(async (req: Request, res: Response) => {
-  const result = await OrderServices.getAllDamagedProducts();
+const getAllDamagedProducts = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await OrderServices.getAllDamagedProducts();
 
-  sendResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: "Damaged products retrieved successfully",
-    data: result,
-  });
-});
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Damaged products retrieved successfully",
+      data: result,
+    });
+  },
+);
 
 const markOrderDamage = catchAsync(async (req: Request, res: Response) => {
   const { orderId, itemIndex, quantity, note } = req.body;
@@ -368,11 +395,10 @@ export const OrderControllers = {
   getMyScheduledOrders,
   deleteOrder,
   getCustomerOrder,
+  updateOrderCancelStatus,
   updateOrderStatus,
   partialUpdateOrder,
 
   getMyHoldOrders,
   getAllHoldOrders,
-
-
 };
