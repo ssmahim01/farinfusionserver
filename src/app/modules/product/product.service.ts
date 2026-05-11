@@ -308,10 +308,18 @@ const getAllProducts = async (query: Record<string, string>) => {
     };
   }
 
+  // SAVE SORT VALUE
+  const sortValue = query.sort; 
+
   // REMOVE SPECIAL FIELDS
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
   delete query.stockFilter;
+
+  // CUSTOM PRICE SORT HANDLE
+  if (sortValue === "price" || sortValue === "-price") {
+    delete query.sort;
+  }
 
   const queryBuilder = new QueryBuilder(
     Product.find(productQuery).populate("category"),
@@ -330,7 +338,7 @@ const getAllProducts = async (query: Record<string, string>) => {
     queryBuilder.getMeta(),
   ]);
 
-  const finalData = data.map((product: any) => {
+  let finalData = data.map((product: any) => {
     const plain = product.toObject ? product.toObject() : product;
 
     const sale = salesMap.get(plain._id.toString());
@@ -347,6 +355,39 @@ const getAllProducts = async (query: Record<string, string>) => {
       totalRevenue: sale?.totalRevenue || 0,
     };
   });
+
+  // CUSTOM PRICE SORT
+  if (sortValue === "price") {
+    finalData = finalData.sort((a: any, b: any) => {
+      const aPrice =
+        a.discountPrice && a.discountPrice > 0
+          ? a.discountPrice
+          : a.price;
+
+      const bPrice =
+        b.discountPrice && b.discountPrice > 0
+          ? b.discountPrice
+          : b.price;
+
+      return aPrice - bPrice;
+    });
+  }
+
+  if (sortValue === "-price") {
+    finalData = finalData.sort((a: any, b: any) => {
+      const aPrice =
+        a.discountPrice && a.discountPrice > 0
+          ? a.discountPrice
+          : a.price;
+
+      const bPrice =
+        b.discountPrice && b.discountPrice > 0
+          ? b.discountPrice
+          : b.price;
+
+      return bPrice - aPrice;
+    });
+  }
 
   return {
     data: finalData,
