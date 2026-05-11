@@ -10,9 +10,9 @@ const router = express.Router();
 router.post(
   "/create",
   checkAuth(Role.ADMIN),
-//   validateRequest(
-//     ProductPurchaseValidation.createProductPurchaseValidationSchema,
-//   ),
+  //   validateRequest(
+  //     ProductPurchaseValidation.createProductPurchaseValidationSchema,
+  //   ),
   ProductPurchaseControllers.createPurchase,
 );
 
@@ -28,6 +28,12 @@ router.get(
   ProductPurchaseControllers.getSinglePurchase,
 );
 
+router.get(
+  "/stats/overview",
+  checkAuth(Role.ADMIN),
+  ProductPurchaseControllers.getPurchaseStats,
+);
+
 router.patch(
   "/status/:id",
   checkAuth(Role.ADMIN),
@@ -37,9 +43,9 @@ router.patch(
 router.patch(
   "/:id",
   checkAuth(Role.ADMIN),
-//   validateRequest(
-//     ProductPurchaseValidation.updateProductPurchaseValidationSchema,
-//   ),
+  //   validateRequest(
+  //     ProductPurchaseValidation.updateProductPurchaseValidationSchema,
+  //   ),
   ProductPurchaseControllers.updatePurchase,
 );
 
