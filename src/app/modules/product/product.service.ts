@@ -9,6 +9,7 @@ import { ICategory } from "../category/category.interface";
 import { IProduct } from "./product.interface";
 import { JwtPayload } from "jsonwebtoken";
 import { Order } from "../order/order.model";
+import { Category } from "../category/category.model";
 
 // const createProductService = async (payload: Partial<IProduct>) => {
 //   const isProductExist = await Product.findOne({ name: payload.title });
@@ -319,6 +320,16 @@ const getAllProducts = async (query: Record<string, string>) => {
   // CUSTOM PRICE SORT HANDLE
   if (sortValue === "price" || sortValue === "-price") {
     delete query.sort;
+  }
+
+  if (query.category) {
+    const category = await Category.findOne({ slug: query.category });
+
+    if (category) {
+      productQuery.category = category._id;
+    }
+
+    delete query.category;
   }
 
   const queryBuilder = new QueryBuilder(
