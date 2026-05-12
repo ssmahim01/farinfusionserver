@@ -54,7 +54,66 @@ const getHeaders = async () => {
   };
 };
 
+const getAreas = async (zoneId: number) => {
+  const headers = await getHeaders();
+
+  const res = await axios.get(
+    `${BASE_URL}/aladdin/api/v1/zones/${zoneId}/area-list`,
+    { headers },
+  );
+
+  return res.data;
+};
+
+const getZones = async (cityId: number) => {
+  const headers = await getHeaders();
+
+  const res = await axios.get(
+    `${BASE_URL}/aladdin/api/v1/cities/${cityId}/zone-list`,
+    { headers },
+  );
+
+  return res.data;
+};
+
+const getCities = async () => {
+  const headers = await getHeaders();
+
+  const res = await axios.get(`${BASE_URL}/aladdin/api/v1/city-list`, {
+    headers,
+  });
+
+  return res.data;
+};
+
 const mapOrderToPathao = (order: any) => {
+  const recipientPhone = order.billingDetails?.phone
+    ?.replace(/^(\+88|88)/, "")
+    .trim();
+
+  if (!recipientPhone || recipientPhone.length !== 11) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Recipient phone must be exactly 11 digits for Pathao",
+    );
+  }
+
+  let recipientAddress = order.billingDetails?.address?.trim() || "";
+
+  if (!recipientAddress) {
+    recipientAddress = "Dhaka, Bangladesh";
+  }
+
+  if (recipientAddress.length < 10) {
+    recipientAddress = `${recipientAddress}, Bangladesh`;
+  }
+
+  const itemDescription =
+    order.products
+      ?.map((item: any) => `${item.product?.title} x${item.quantity}`)
+      .join(", ")
+      .slice(0, 240) || "Order items";
+
   return {
     store_id: Number(process.env.PATHAO_STORE_ID),
 
@@ -62,13 +121,15 @@ const mapOrderToPathao = (order: any) => {
 
     recipient_name: order.billingDetails?.fullName || "Customer",
 
-    recipient_phone: order.billingDetails?.phone || "",
+    recipient_phone: recipientPhone,
 
-    recipient_address: order.billingDetails?.address || "",
+    recipient_address: recipientAddress,
 
-    recipient_city: 1,
-    recipient_zone: 1,
-    recipient_area: 1,
+    recipient_city: Number(process.env.PATHAO_CITY_ID),
+
+    recipient_zone: Number(process.env.PATHAO_ZONE_ID),
+
+    recipient_area: Number(process.env.PATHAO_AREA_ID),
 
     delivery_type: 48,
 
@@ -76,29 +137,49 @@ const mapOrderToPathao = (order: any) => {
 
     special_instruction: order.note || "Auto generated order",
 
-    item_quantity: order.products?.length || 1,
+    item_quantity:
+      order.products?.reduce(
+        (sum: number, item: any) => sum + item.quantity,
+        0,
+      ) || 1,
 
     item_weight: 0.5,
 
-    amount_to_collect: order.total,
+    item_description: itemDescription,
+
+    amount_to_collect: Number(order.total),
   };
 };
 
-const createCourier = async (order: any) => {
+const createCourier = async (orderId: any) => {
+  const order = await Order.findById({ _id: orderId }).populate(
+    "products.product",
+  );
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
+
   const existing = await Courier.findOne({
     order: order._id,
     status: { $ne: CourierStatus.CANCELLED },
   });
 
-  if (existing) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Courier already created for this order",
-    );
-  }
+  //   if (existing) {
+  //     throw new AppError(
+  //       httpStatus.BAD_REQUEST,
+  //       "Courier already created for this order",
+  //     );
+  //   }
 
   try {
     const headers = await getHeaders();
+
+    const stores = await axios.get(`${BASE_URL}/aladdin/api/v1/stores`, {
+      headers,
+    });
+
+    console.log(stores.data?.data);
 
     const payload = mapOrderToPathao(order);
 
@@ -107,13 +188,16 @@ const createCourier = async (order: any) => {
     });
 
     const data = res.data?.data;
+    const consignmentId = data?.consignment_id;
+    const trackingNumber = data?.tracking_number;
 
     const courier = await Courier.create({
       order: order._id,
       courierName: CourierName.PATHAO,
-      consignmentId: data?.consignment_id,
-      trackingCode: data?.tracking_number,
+      consignmentId: consignmentId,
+      trackingCode: trackingNumber,
       status: CourierStatus.CREATED,
+      deliveryStatus: CourierDeliveryStatus.PENDING,
       rawResponse: res.data,
     });
 
@@ -125,12 +209,19 @@ const createCourier = async (order: any) => {
 
     return courier;
   } catch (error: any) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     await Courier.create({
       order: order._id,
       courierName: CourierName.PATHAO,
       status: CourierStatus.FAILED,
+      deliveryStatus: CourierDeliveryStatus.PENDING,
       rawResponse: error?.response?.data,
     });
+
+    // console.log("PATHAO ERROR:", error?.response?.data);
 
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -245,4 +336,5 @@ const trackCourier = async (trackingCode: string) => {
 export const PathaoProvider = {
   createCourier,
   trackCourier,
+  getCities,
 };

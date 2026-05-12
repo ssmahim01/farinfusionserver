@@ -7,6 +7,7 @@ import {
   createCourierZodSchema,
   trackCourierZodSchema,
 } from "./courier.validation";
+import { PathaoProvider } from "./providers/pathao.provider";
 
 const router = express.Router();
 
@@ -16,6 +17,11 @@ router.post(
   validateRequest(createCourierZodSchema),
   CourierControllers.createCourier,
 );
+
+router.get("/pathao/cities", async (req, res) => {
+  const result = await PathaoProvider.getCities();
+  res.json(result);
+});
 
 router.get(
   "/track/:trackingCode",

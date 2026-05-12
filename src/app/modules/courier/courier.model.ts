@@ -26,7 +26,7 @@ const courierSchema = new Schema<ICourier>(
 
     trackingCode: {
       type: String,
-      index: true,
+      // index: true,
     },
 
     status: {
