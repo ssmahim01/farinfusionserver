@@ -10,6 +10,7 @@ import { IProduct } from "./product.interface";
 import { JwtPayload } from "jsonwebtoken";
 import { Order } from "../order/order.model";
 import { Category } from "../category/category.model";
+import { Brand } from "../brand/brand.model";
 
 // const createProductService = async (payload: Partial<IProduct>) => {
 //   const isProductExist = await Product.findOne({ name: payload.title });
@@ -138,8 +139,8 @@ const updateProduct = async (
 
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
-    .populate("category", "title")
-    .populate("brand", "title");
+    .populate("category", "title slug")
+    .populate("brand", "title slug");
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
@@ -221,20 +222,6 @@ const getAllProducts = async (query: Record<string, string>) => {
     isDeleted: false,
     isPublished: true,
   };
-  // console.log(query);
-
-  // DATE FILTER
-  // if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-  //   orderMatch.createdAt = {};
-
-  //   if (query["createdAt[gte]"]) {
-  //     orderMatch.createdAt.$gte = new Date(query["createdAt[gte]"]);
-  //   }
-
-  //   if (query["createdAt[lte]"]) {
-  //     orderMatch.createdAt.$lte = new Date(query["createdAt[lte]"]);
-  //   }
-  // }
 
   const sales = await Order.aggregate([
     {
@@ -310,17 +297,65 @@ const getAllProducts = async (query: Record<string, string>) => {
   }
 
   // SAVE SORT VALUE
-  const sortValue = query.sort; 
+  const sortValue = query.sort;
 
   // REMOVE SPECIAL FIELDS
   delete query["createdAt[gte]"];
   delete query["createdAt[lte]"];
   delete query.stockFilter;
 
-  // CUSTOM PRICE SORT HANDLE
-  if (sortValue === "price" || sortValue === "-price") {
-    delete query.sort;
+  // PRICE FILTER
+  if (query["price[gte]"] || query["price[lte]"]) {
+    const minPrice = Number(query["price[gte]"] || 0);
+    const maxPrice = Number(query["price[lte]"] || Infinity);
+
+    productQuery.$expr = {
+      $and: [
+        {
+          $gte: [
+            {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$discountPrice", null] },
+                    { $gt: ["$discountPrice", 0] },
+                  ],
+                },
+                "$discountPrice",
+                "$price",
+              ],
+            },
+            minPrice,
+          ],
+        },
+        {
+          $lte: [
+            {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$discountPrice", null] },
+                    { $gt: ["$discountPrice", 0] },
+                  ],
+                },
+                "$discountPrice",
+                "$price",
+              ],
+            },
+            maxPrice,
+          ],
+        },
+      ],
+    };
   }
+
+  // REMOVE SPECIAL FIELDS
+  delete query["createdAt[gte]"];
+  delete query["createdAt[lte]"];
+  delete query.stockFilter;
+
+  delete query["price[gte]"];
+  delete query["price[lte]"];
 
   if (query.category) {
     const category = await Category.findOne({ slug: query.category });
@@ -332,8 +367,18 @@ const getAllProducts = async (query: Record<string, string>) => {
     delete query.category;
   }
 
+  if (query.brand) {
+    const brand = await Brand.findOne({ slug: query.brand });
+
+    if (brand) {
+      productQuery.brand = brand._id;
+    }
+
+    delete query.brand;
+  }
+
   const queryBuilder = new QueryBuilder(
-    Product.find(productQuery).populate("category"),
+    Product.find(productQuery).populate("category").populate("brand"),
     query,
   );
 
@@ -371,14 +416,10 @@ const getAllProducts = async (query: Record<string, string>) => {
   if (sortValue === "price") {
     finalData = finalData.sort((a: any, b: any) => {
       const aPrice =
-        a.discountPrice && a.discountPrice > 0
-          ? a.discountPrice
-          : a.price;
+        a.discountPrice && a.discountPrice > 0 ? a.discountPrice : a.price;
 
       const bPrice =
-        b.discountPrice && b.discountPrice > 0
-          ? b.discountPrice
-          : b.price;
+        b.discountPrice && b.discountPrice > 0 ? b.discountPrice : b.price;
 
       return aPrice - bPrice;
     });
@@ -387,14 +428,10 @@ const getAllProducts = async (query: Record<string, string>) => {
   if (sortValue === "-price") {
     finalData = finalData.sort((a: any, b: any) => {
       const aPrice =
-        a.discountPrice && a.discountPrice > 0
-          ? a.discountPrice
-          : a.price;
+        a.discountPrice && a.discountPrice > 0 ? a.discountPrice : a.price;
 
       const bPrice =
-        b.discountPrice && b.discountPrice > 0
-          ? b.discountPrice
-          : b.price;
+        b.discountPrice && b.discountPrice > 0 ? b.discountPrice : b.price;
 
       return bPrice - aPrice;
     });
@@ -427,7 +464,9 @@ const getAllTrashProducts = async (query: Record<string, string>) => {
   delete query["createdAt[lte]"];
 
   const queryBuilder = new QueryBuilder(
-    Product.find({ isDeleted: true, ...queryObj }).populate("category"),
+    Product.find({ isDeleted: true, ...queryObj })
+      .populate("category")
+      .populate("brand"),
     query,
   );
   const productsData = queryBuilder
