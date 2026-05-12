@@ -139,8 +139,8 @@ const updateProduct = async (
 
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
-    .populate("category", "title")
-    .populate("brand", "title");
+    .populate("category", "title slug")
+    .populate("brand", "title slug");
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
