@@ -3,7 +3,11 @@ import { Product } from "../product/product.model";
 import AppError from "../../errorHelpers/appError";
 import httpStatus from "http-status-codes";
 import { QueryBuilder } from "../../utils/QueryBuilder";
-import { IProductPurchase, PurchaseStatus } from "./productPurchase.interface";
+import {
+  IProductPurchase,
+  PaymentStatus,
+  PurchaseStatus,
+} from "./productPurchase.interface";
 import { ProductPurchase } from "./productPurchase.model";
 import { productPurchaseSearchableFields } from "./productPurchase.constant";
 
@@ -15,26 +19,30 @@ const createPurchase = async (
     throw new AppError(httpStatus.BAD_REQUEST, "Products are required");
   }
 
+  let grandTotal = 0;
+
+  for (const item of payload.products) {
+    const product = await Product.findById(item.product);
+
+    if (!product) {
+      throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+    }
+
+    item.quantity = Number(item.quantity);
+    item.buyingPrice = Number(item.buyingPrice);
+    item.totalAmount = item.quantity * item.buyingPrice;
+
+    grandTotal += item.totalAmount;
+  }
+
+  payload.grandTotal = grandTotal;
   payload.createdBy = user.userId;
 
   const purchase = await ProductPurchase.create(payload);
 
-  // STOCK ADD
-  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    for (const item of purchase.products) {
-      const product = await Product.findById(item.product);
-
-      if (!product) continue;
-
-      product.totalAddedStock = (product.totalAddedStock || 0) + item.quantity;
-
-      product.availableStock = (product.availableStock || 0) + item.quantity;
-
-      await product.save();
-    }
-  }
-
-  return purchase;
+  return await ProductPurchase.findById(purchase._id)
+    .populate("products.product")
+    .populate("createdBy", "name email");
 };
 
 const getAllPurchases = async (query: Record<string, string>) => {
@@ -85,54 +93,40 @@ const updatePurchase = async (
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  // rollback old stock
-  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    for (const item of purchase.products) {
+  if (payload.products?.length) {
+    let grandTotal = 0;
+
+    for (const item of payload.products) {
       const product = await Product.findById(item.product);
 
-      if (!product) continue;
+      if (!product) {
+        throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+      }
 
-      product.totalAddedStock = Math.max(
-        (product.totalAddedStock || 0) - item.quantity,
-        0,
-      );
+      item.quantity = Number(item.quantity);
+      item.buyingPrice = Number(item.buyingPrice);
+      item.totalAmount = item.quantity * item.buyingPrice;
 
-      product.availableStock = Math.max(
-        (product.availableStock || 0) - item.quantity,
-        0,
-      );
-
-      await product.save();
+      grandTotal += item.totalAmount;
     }
+
+    payload.grandTotal = grandTotal;
   }
 
   Object.assign(purchase, payload);
 
-  // apply new stock
-  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    for (const item of purchase.products) {
-      const product = await Product.findById(item.product);
-
-      if (!product) continue;
-
-      product.totalAddedStock = (product.totalAddedStock || 0) + item.quantity;
-
-      product.availableStock = (product.availableStock || 0) + item.quantity;
-
-      await product.save();
-    }
-  }
-
   await purchase.save();
 
-  return purchase;
+  return await ProductPurchase.findById(id)
+    .populate("products.product")
+    .populate("createdBy", "name email");
 };
 
 const updatePurchaseStatus = async (
   id: string,
   payload: {
     purchaseStatus?: PurchaseStatus;
-    paymentStatus?: string;
+    paymentStatus?: PaymentStatus;
   },
 ) => {
   const purchase = await ProductPurchase.findById(id);
@@ -141,55 +135,12 @@ const updatePurchaseStatus = async (
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  const oldPurchaseStatus = purchase.purchaseStatus;
-
-  const newPurchaseStatus = payload.purchaseStatus ?? oldPurchaseStatus;
-
-  // prevent duplicate stock update
-  if (oldPurchaseStatus !== newPurchaseStatus) {
-    // rollback old stock
-    if (oldPurchaseStatus === PurchaseStatus.RECEIVED) {
-      for (const item of purchase.products) {
-        const product = await Product.findById(item.product);
-
-        if (!product) continue;
-
-        product.totalAddedStock = Math.max(
-          (product.totalAddedStock || 0) - item.quantity,
-          0,
-        );
-
-        product.availableStock = Math.max(
-          (product.availableStock || 0) - item.quantity,
-          0,
-        );
-
-        await product.save();
-      }
-    }
-
-    // apply new stock
-    if (newPurchaseStatus === PurchaseStatus.RECEIVED) {
-      for (const item of purchase.products) {
-        const product = await Product.findById(item.product);
-
-        if (!product) continue;
-
-        product.totalAddedStock =
-          (product.totalAddedStock || 0) + item.quantity;
-
-        product.availableStock = (product.availableStock || 0) + item.quantity;
-
-        await product.save();
-      }
-    }
-
-    purchase.purchaseStatus = newPurchaseStatus;
+  if (payload.purchaseStatus) {
+    purchase.purchaseStatus = payload.purchaseStatus;
   }
 
-  // payment status update
   if (payload.paymentStatus) {
-    purchase.paymentStatus = payload.paymentStatus as any;
+    purchase.paymentStatus = payload.paymentStatus;
   }
 
   await purchase.save();
@@ -241,26 +192,6 @@ const deletePurchase = async (id: string) => {
 
   if (!purchase) {
     throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
-  }
-
-  if (purchase.purchaseStatus === PurchaseStatus.RECEIVED) {
-    for (const item of purchase.products) {
-      const product = await Product.findById(item.product);
-
-      if (!product) continue;
-
-      product.totalAddedStock = Math.max(
-        (product.totalAddedStock || 0) - item.quantity,
-        0,
-      );
-
-      product.availableStock = Math.max(
-        (product.availableStock || 0) - item.quantity,
-        0,
-      );
-
-      await product.save();
-    }
   }
 
   purchase.isDeleted = true;
