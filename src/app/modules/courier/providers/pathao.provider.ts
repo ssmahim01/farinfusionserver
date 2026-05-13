@@ -115,7 +115,7 @@ const mapOrderToPathao = (order: any, store: any) => {
       .slice(0, 240) || "Order items";
 
   return {
-    store_id: procews.store_id,
+    store_id: store.store_id,
 
     merchant_order_id: order.customOrderId,
 
