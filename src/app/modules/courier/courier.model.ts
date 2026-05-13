@@ -21,7 +21,7 @@ const courierSchema = new Schema<ICourier>(
     },
 
     consignmentId: {
-      type: Number,
+      type: Schema.Types.Mixed,
     },
 
     trackingCode: {
@@ -52,7 +52,7 @@ const courierSchema = new Schema<ICourier>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 courierSchema.index({ order: 1 });

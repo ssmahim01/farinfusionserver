@@ -26,9 +26,9 @@ const getPathaoToken = async () => {
     const res = await axios.post(`${BASE_URL}/aladdin/api/v1/issue-token`, {
       client_id: process.env.PATHAO_CLIENT_ID,
       client_secret: process.env.PATHAO_CLIENT_SECRET,
+      grant_type: "password",
       username: process.env.PATHAO_USERNAME,
       password: process.env.PATHAO_PASSWORD,
-      grant_type: "password",
     });
 
     cachedToken = res.data?.access_token;
@@ -86,7 +86,7 @@ const getCities = async () => {
   return res.data;
 };
 
-const mapOrderToPathao = (order: any) => {
+const mapOrderToPathao = (order: any, store: any) => {
   const recipientPhone = order.billingDetails?.phone
     ?.replace(/^(\+88|88)/, "")
     .trim();
@@ -115,7 +115,7 @@ const mapOrderToPathao = (order: any) => {
       .slice(0, 240) || "Order items";
 
   return {
-    store_id: Number(process.env.PATHAO_STORE_ID),
+    store_id: procews.store_id,
 
     merchant_order_id: order.customOrderId,
 
@@ -125,15 +125,14 @@ const mapOrderToPathao = (order: any) => {
 
     recipient_address: recipientAddress,
 
-    recipient_city: Number(process.env.PATHAO_CITY_ID),
-
-    recipient_zone: Number(process.env.PATHAO_ZONE_ID),
-
-    recipient_area: Number(process.env.PATHAO_AREA_ID),
+    recipient_city: store.city_id,
+    recipient_zone: store.zone_id,
+    recipient_area: 1,
 
     delivery_type: 48,
 
     item_type: 2,
+    // delivery_fee: order?.shippingCost || 0,
 
     special_instruction: order.note || "Auto generated order",
 
@@ -179,31 +178,63 @@ const createCourier = async (orderId: any) => {
       headers,
     });
 
-    console.log(stores.data?.data);
+    // console.log(stores.data?.data);
 
-    const payload = mapOrderToPathao(order);
+    const storeList = stores.data?.data?.data || [];
+
+    const selectedStore =
+      storeList.find((store: any) => store.is_default_store) ||
+      storeList.find((store: any) => store.is_active === 1);
+
+    if (!selectedStore) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "No active Pathao store found",
+      );
+    }
+
+    const payload = mapOrderToPathao(order, selectedStore);
 
     const res = await axios.post(`${BASE_URL}/aladdin/api/v1/orders`, payload, {
       headers,
     });
 
-    const data = res.data?.data;
-    const consignmentId = data?.consignment_id;
-    const trackingNumber = data?.tracking_number;
+    const responseData = res.data?.data?.data || res.data?.data || {};
+    const consignmentId = responseData?.consignment_id
+      ? responseData.rawResponse?.consignment_id
+      : responseData.consignment_id;
 
-    const courier = await Courier.create({
+    const trackingNumber =
+      responseData?.rawResponse?.tracking_number ||
+      responseData?.rawResponse?.consignment_id ||
+      responseData?.consignment_id?.toString();
+
+    const courierPayload: any = {
       order: order._id,
       courierName: CourierName.PATHAO,
-      consignmentId: consignmentId,
-      trackingCode: trackingNumber,
+      trackingCode: responseData?.consignment_id,
+      consignmentId,
       status: CourierStatus.CREATED,
       deliveryStatus: CourierDeliveryStatus.PENDING,
-      rawResponse: res.data,
-    });
+      rawResponse: responseData,
+    };
+
+    // console.log(responseData);
+
+    if (consignmentId && !isNaN(consignmentId)) {
+      courierPayload.consignmentId = consignmentId;
+    }
+
+    const courier = await Courier.create(courierPayload);
+    console.log(courier);
 
     order.courierName = CourierName.PATHAO;
-    order.trackingNumber = data?.tracking_number;
-    order.deliveryStatus = DeliveryStatus.IN_TRANSIT;
+    order.trackingNumber =
+      responseData?.rawResponse?.consignment_id ||
+      trackingNumber ||
+      consignmentId?.toString() ||
+      "";
+    order.deliveryStatus = responseData?.deliveryStatus;
 
     await order.save();
 
@@ -213,15 +244,7 @@ const createCourier = async (orderId: any) => {
       throw error;
     }
 
-    await Courier.create({
-      order: order._id,
-      courierName: CourierName.PATHAO,
-      status: CourierStatus.FAILED,
-      deliveryStatus: CourierDeliveryStatus.PENDING,
-      rawResponse: error?.response?.data,
-    });
-
-    // console.log("PATHAO ERROR:", error?.response?.data);
+    // console.log("PATHAO ERROR:", error);
 
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -232,7 +255,7 @@ const createCourier = async (orderId: any) => {
 
 const trackCourier = async (trackingCode: string) => {
   const courier = await Courier.findOne({
-    trackingCode,
+    $or: [{ trackingCode }, { consignmentId: trackingCode }],
   });
 
   if (!courier) {

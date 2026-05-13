@@ -35,7 +35,7 @@ export interface ICourier {
 
   courierName: CourierName;
 
-  consignmentId?: number;
+  consignmentId?: string | number;
   trackingCode?: string;
 
   status: CourierStatus;

@@ -4,7 +4,7 @@ import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status-codes";
 import { Courier } from "./courier.model";
 import { getCourierProvider } from "./providers/courier.factory";
-import { CourierName } from "./courier.interface";
+import { CourierName, CourierStatus } from "./courier.interface";
 
 const createCourier = catchAsync(async (req: Request, res: Response) => {
   const { orderId, courierName } = req.body;
@@ -54,7 +54,8 @@ const getCourierByOrderId = catchAsync(async (req, res) => {
 
   const result = await Courier.findOne({
     order: orderId,
-  });
+    status: { $ne: CourierStatus.FAILED },
+  }).sort({ createdAt: -1 });
 
   sendResponse(res, {
     statusCode: 200,
