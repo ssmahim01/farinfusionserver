@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import app from "./app";
 import { envVars } from "./app/config/env";
 import { seedAdmin } from "./app/utils/seedAdmin";
+import { startCourierCron } from "./app/cron/courier.cron";
 let server: Server;
 
 const startServer = async () => {
@@ -12,6 +13,7 @@ const startServer = async () => {
     console.log("Mongoose is connected!!!");
 
     await seedAdmin();
+    startCourierCron();
 
     server = app.listen(envVars.PORT, () => {
       console.log(`Farin Fusion app is running on port ${envVars.PORT}`);
