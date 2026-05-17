@@ -7,18 +7,22 @@ const syncSteadfastCouriers = async () => {
     courierName: CourierName.STEADFAST,
     trackingCode: { $exists: true, $ne: null },
     deliveryStatus: {
-      $nin: [CourierDeliveryStatus.DELIVERED, CourierDeliveryStatus.CANCELLED],
+      $nin: [
+        CourierDeliveryStatus.DELIVERED,
+        CourierDeliveryStatus.CANCELLED,
+      ],
     },
   })
-    .limit(100)
-    .select("trackingCode");
+    .select("trackingCode")
+    .lean();
 
   console.log(`Syncing ${activeCouriers.length} active Steadfast couriers...`);
 
   for (const courier of activeCouriers) {
     try {
-      const trackingCode = courier?.trackingCode || "No tracking code";
-      await CourierServices.trackCourier(trackingCode);
+      if (!courier.trackingCode) continue;
+
+      await CourierServices.trackCourier(courier.trackingCode);
     } catch (err) {
       console.error(`Failed syncing tracking: ${courier.trackingCode}`);
     }

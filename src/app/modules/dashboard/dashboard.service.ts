@@ -37,7 +37,12 @@ const getDashboardOverview = async (
   };
 
   const productCostAgg = await Order.aggregate([
-    { $match: { ...matchCondition, orderStatus: "COMPLETED" } },
+    {
+      $match: {
+        ...matchCondition,
+        orderStatus: { $in: ["COMPLETED", "PARTIAL"] },
+      },
+    },
     { $unwind: "$products" },
     {
       $lookup: {
@@ -118,6 +123,7 @@ const getDashboardOverview = async (
     CONFIRMED: 0,
     COMPLETED: 0,
     CANCELLED: 0,
+    PARTIAL: 0,
   };
 
   orderStatsAgg.forEach((item) => {
@@ -128,7 +134,7 @@ const getDashboardOverview = async (
     {
       $match: {
         ...matchCondition,
-        orderStatus: "COMPLETED",
+        orderStatus: { $in: ["COMPLETED", "PARTIAL"] },
       },
     },
     {
@@ -215,8 +221,8 @@ const getDashboardOverview = async (
         $match: {
           isDeleted: false,
           isPublished: true,
-          orderStatus: "COMPLETED",
-          deliveryStatus: "DELIVERED",
+          orderStatus: { $in: ["COMPLETED", "PARTIAL"] },
+          deliveryStatus: { $in: ["DELIVERED", "PARTIAL"] },
           ...queryObj,
         },
       },

@@ -41,8 +41,8 @@ export const getStaffStats = async (queryObj: any) => {
       $match: {
         isDeleted: false,
         isPublished: true,
-        orderStatus: "COMPLETED",
-        deliveryStatus: "DELIVERED",
+        orderStatus: { $in: ["COMPLETED", "PARTIAL"] },
+        deliveryStatus: { $in: ["DELIVERED", "PARTIAL"] },
         seller: { $ne: null },
         ...queryObj,
       },
