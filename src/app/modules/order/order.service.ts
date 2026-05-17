@@ -346,14 +346,6 @@ const getSingleOrder = async (id: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
 
-  if (order.trackingNumber) {
-    try {
-      await CourierServices.trackCourier(order?.trackingNumber);
-    } catch (err) {
-      console.log("Courier sync failed (non-blocking)");
-    }
-  }
-
   return { data: order };
 };
 
@@ -849,15 +841,7 @@ const getAllOrders = async (query: Record<string, string>) => {
     .populate("products.product");
 
   const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
-  await Promise.all(
-    data.map(async (order: any) => {
-      if (order.trackingNumber) {
-        try {
-          await CourierServices.trackCourier(order.trackingNumber);
-        } catch {}
-      }
-    }),
-  );
+ 
   return { data, meta, stats: formattedStats };
 };
 
