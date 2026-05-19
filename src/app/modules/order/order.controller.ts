@@ -103,10 +103,12 @@ const updateOrderCancelStatus = catchAsync(
 const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id;
   const { orderStatus } = req.body;
+  const user = req.user;
 
   const result = await OrderServices.updateOrderStatus(
     orderId as string,
     orderStatus,
+    user
   );
 
   sendResponse(res, {
@@ -120,6 +122,7 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
 const updateOrder = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
   const payload = req.body;
+
 
   const result = await OrderServices.updateOrder(orderId, payload);
 
@@ -194,8 +197,9 @@ const getAllScheduledOrders = catchAsync(async (req, res) => {
 const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
   const { orderStatus } = req.body;
+  const user = req.user;
 
-  const result = await OrderServices.updateOrderStatus(orderId, orderStatus);
+  const result = await OrderServices.updateOrderStatus(orderId, orderStatus, user);
 
   sendResponse(res, {
     success: true,

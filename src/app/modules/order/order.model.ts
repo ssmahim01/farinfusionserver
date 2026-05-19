@@ -131,6 +131,11 @@ const orderSchema = new Schema<IOrder>(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+
+    confirmedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   {
     timestamps: true,
