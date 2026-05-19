@@ -1,11 +1,11 @@
 import { Courier } from "./courier.model";
-import { CourierDeliveryStatus, CourierName } from "./courier.interface";
-import { CourierServices } from "./courier.service";
+import { CourierDeliveryStatus } from "./courier.interface";
+import { getCourierProvider } from "./providers/courier.factory";
 
-const syncSteadfastCouriers = async () => {
+const syncActiveCouriers = async () => {
   const activeCouriers = await Courier.find({
-    courierName: CourierName.STEADFAST,
     trackingCode: { $exists: true, $ne: null },
+
     deliveryStatus: {
       $nin: [
         CourierDeliveryStatus.DELIVERED,
@@ -13,22 +13,26 @@ const syncSteadfastCouriers = async () => {
       ],
     },
   })
-    .select("trackingCode")
+    .select("trackingCode courierName")
     .lean();
 
-  console.log(`Syncing ${activeCouriers.length} active Steadfast couriers...`);
+  console.log(`📦 Syncing ${activeCouriers.length} active couriers...`);
 
   for (const courier of activeCouriers) {
     try {
       if (!courier.trackingCode) continue;
 
-      await CourierServices.trackCourier(courier.trackingCode);
+      const provider = getCourierProvider(courier.courierName);
+
+      await provider.trackCourier(courier.trackingCode);
     } catch (err) {
-      console.error(`Failed syncing tracking: ${courier.trackingCode}`);
+      console.error(
+        `❌ Sync failed: ${courier.courierName} - ${courier.trackingCode}`,
+      );
     }
   }
 };
 
 export const CourierSyncService = {
-  syncSteadfastCouriers,
+  syncActiveCouriers,
 };

@@ -5,6 +5,7 @@ export enum CourierName {
   STEADFAST = "STEADFAST",
   PATHAO = "PATHAO",
   REDX = "REDX",
+  PAPERFLY = "PAPERFLY",
 }
 
 export enum CourierStatus {
@@ -40,6 +41,7 @@ export interface ICourier {
 
   status: CourierStatus;
   deliveryStatus: CourierDeliveryStatus;
+  trackingBarcode?: string;
 
   rawResponse?: Record<string, any>;
 

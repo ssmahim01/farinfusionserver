@@ -23,6 +23,10 @@ const courierSchema = new Schema<ICourier>(
     consignmentId: {
       type: Schema.Types.Mixed,
     },
+    trackingBarcode: {
+      type: String,
+      required: false,
+    },
 
     trackingCode: {
       type: String,

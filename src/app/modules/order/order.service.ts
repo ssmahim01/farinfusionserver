@@ -20,7 +20,6 @@ import AppError from "../../errorHelpers/appError";
 import { QueryBuilder } from "../../utils/QueryBuilder";
 import { orderSearchableFields } from "./order.constants";
 import { Role } from "../user/user.interface";
-import { CourierServices } from "../courier/courier.service";
 import { Coupon } from "../coupon/coupon.model";
 import { CouponServices } from "../coupon/coupon.service";
 

@@ -12,6 +12,7 @@ export const createCourierZodSchema = z.object({
     CourierName.STEADFAST,
     CourierName.PATHAO,
     CourierName.REDX,
+    CourierName.PAPERFLY,
   ]),
 });
 

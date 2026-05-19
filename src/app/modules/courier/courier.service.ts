@@ -261,6 +261,52 @@ const createCourier = async (orderId: string) => {
   }
 };
 
+export const syncCourierOrderStatus = async (
+  courier: any,
+  mappedStatus: CourierDeliveryStatus,
+) => {
+  const orderUpdate: any = {
+    deliveryStatus: mappedStatus,
+  };
+
+  switch (mappedStatus) {
+    case CourierDeliveryStatus.DELIVERED:
+      orderUpdate.orderStatus = OrderStatus.COMPLETED;
+      break;
+
+    case CourierDeliveryStatus.PARTIAL:
+      orderUpdate.orderStatus = OrderStatus.PARTIAL;
+      break;
+
+    case CourierDeliveryStatus.CANCELLED:
+      orderUpdate.orderStatus = OrderStatus.CANCELLED;
+      break;
+
+    default:
+      orderUpdate.orderStatus = OrderStatus.CONFIRMED;
+  }
+
+  await Order.findByIdAndUpdate(courier.order, orderUpdate);
+
+  if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
+    const order = await Order.findById(courier.order);
+
+    if (order && !(order as any).isRestocked) {
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: {
+            availableStock: item.quantity,
+            totalSold: -item.quantity,
+          },
+        });
+      }
+
+      (order as any).isRestocked = true;
+      await order.save();
+    }
+  }
+};
+
 export const CourierServices = {
   createCourier,
   trackCourier,

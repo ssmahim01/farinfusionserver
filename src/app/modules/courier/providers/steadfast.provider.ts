@@ -11,6 +11,7 @@ import {
 import { Order } from "../../order/order.model";
 import { DeliveryStatus, OrderStatus } from "../../order/order.interface";
 import { Product } from "../../product/product.model";
+import { syncCourierOrderStatus } from "../courier.service";
 
 const BASE_URL = "https://portal.packzy.com/api/v1";
 
@@ -21,6 +22,38 @@ const headers = {
 };
 
 const MAX_DESC_LENGTH = 500;
+
+const mapSteadfastStatus = (
+  apiStatus: string,
+): CourierDeliveryStatus => {
+  switch (apiStatus?.toLowerCase()) {
+    case "pending":
+      return CourierDeliveryStatus.PENDING;
+
+    case "picked_up":
+      return CourierDeliveryStatus.PICKED_UP;
+
+    case "in_review":
+      return CourierDeliveryStatus.IN_REVIEW;
+
+    case "partial_delivered":
+      return CourierDeliveryStatus.PARTIAL;
+
+    case "delivered":
+      return CourierDeliveryStatus.DELIVERED;
+
+    case "cancelled":
+      return CourierDeliveryStatus.CANCELLED;
+
+    case "hold":
+      return CourierDeliveryStatus.HOLD;
+
+    case "transit":
+    case "in_transit":
+    default:
+      return CourierDeliveryStatus.IN_TRANSIT;
+  }
+};
 
 const mapOrderToSteadfast = (order: any) => {
   const products = order.products || [];
@@ -94,116 +127,60 @@ const mapOrderToSteadfast = (order: any) => {
 };
 
 const trackCourier = async (trackingCode: string) => {
-  const courier = await Courier.findOne({ trackingCode });
+  const courier = await Courier.findOne({
+    trackingCode,
+    courierName: CourierName.STEADFAST,
+  });
 
   if (!courier) {
-    throw new AppError(httpStatus.NOT_FOUND, "Courier not found");
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Steadfast courier not found",
+    );
   }
 
-  const res = await axios.get(
-    `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
-    { headers },
-  );
+  try {
+    const res = await axios.get(
+      `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
+      {
+        headers,
+        timeout: 15000,
+      },
+    );
 
-  // console.log("TRACK RESPONSE:", res.data);
+    const apiStatus =
+      res.data?.delivery_status ||
+      res.data?.status ||
+      res.data?.data?.status;
 
-  const apiStatus = res.data?.delivery_status || res.data?.status;
+    if (!apiStatus) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Invalid Steadfast tracking response",
+      );
+    }
 
-  if (!apiStatus) {
-    throw new AppError(400, "Invalid tracking response");
-  }
+    const mappedStatus = mapSteadfastStatus(apiStatus);
 
-  let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+    if (courier.deliveryStatus === mappedStatus) {
+      return courier;
+    }
 
-  switch (apiStatus?.toLowerCase()) {
-    case "pending":
-      mappedStatus = CourierDeliveryStatus.PENDING;
-      break;
-
-    case "picked_up":
-      mappedStatus = CourierDeliveryStatus.PICKED_UP;
-      break;
-
-    case "in_review":
-      mappedStatus = CourierDeliveryStatus.IN_REVIEW;
-      break;
-
-    case "partial_delivered":
-      mappedStatus = CourierDeliveryStatus.PARTIAL;
-      break;
-
-    case "delivered":
-      mappedStatus = CourierDeliveryStatus.DELIVERED;
-      break;
-
-    case "cancelled":
-      mappedStatus = CourierDeliveryStatus.CANCELLED;
-      break;
-
-    case "hold":
-      mappedStatus = CourierDeliveryStatus.HOLD;
-      break;
-
-    default:
-      mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
-  }
-
-  if (courier?.deliveryStatus !== mappedStatus) {
     courier.deliveryStatus = mappedStatus;
     courier.rawResponse = res.data;
+
     await courier.save();
 
-    const orderUpdate: any = {
-      deliveryStatus: mappedStatus,
-    };
+    await syncCourierOrderStatus(courier, mappedStatus);
 
-    switch (mappedStatus) {
-      case CourierDeliveryStatus.DELIVERED:
-        orderUpdate.orderStatus = OrderStatus.COMPLETED;
-        break;
-
-      case CourierDeliveryStatus.CANCELLED:
-        orderUpdate.orderStatus = OrderStatus.CANCELLED;
-        break;
-
-      case CourierDeliveryStatus.PARTIAL:
-        orderUpdate.orderStatus = OrderStatus.PARTIAL;
-        break;
-
-      default:
-        orderUpdate.orderStatus = OrderStatus.CONFIRMED;
-    }
-
-    await Order.findByIdAndUpdate(courier.order, orderUpdate);
-
-    if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
-      const order = await Order.findById(courier.order).populate(
-        "products.product",
-      );
-
-      if (order) {
-        if (!(order as any).isRestocked) {
-          for (const item of order.products) {
-            await Product.findByIdAndUpdate(item.product, {
-              $inc: {
-                availableStock: item.quantity,
-                totalSold: -item.quantity,
-              },
-            });
-          }
-
-          (order as any).isRestocked = true;
-        }
-
-        order.deliveryStatus = DeliveryStatus.CANCELLED;
-        order.orderStatus = OrderStatus.CANCELLED;
-
-        await order.save();
-      }
-    }
+    return courier;
+  } catch (error: any) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      error?.response?.data?.message ||
+        "Steadfast tracking failed",
+    );
   }
-
-  return courier;
 };
 
 const createCourier = async (orderId: string) => {
