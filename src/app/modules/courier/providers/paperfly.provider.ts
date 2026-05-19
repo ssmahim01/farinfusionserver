@@ -91,6 +91,8 @@ const createCourier = async (orderId: string) => {
     );
 
     const success = res.data?.success;
+    // console.log("Paperfly create response:", res.data);
+    
 
     const courier = await Courier.create({
       order: order._id,
