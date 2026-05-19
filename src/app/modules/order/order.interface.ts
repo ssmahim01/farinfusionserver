@@ -23,6 +23,8 @@ export enum DeliveryStatus {
   DELIVERED = "DELIVERED",
   RETURNED = "RETURNED",
   CANCELLED = "CANCELLED",
+  IN_REVIEW = "IN_REVIEW"
+
 }
 
 export enum AdvanceOption {
@@ -92,6 +94,8 @@ export interface IOrder {
   deliveryStatus: DeliveryStatus;
   isDeleted?: boolean;
   seller?: Types.ObjectId;
+
+  confirmedBy?: Types.ObjectId | null
 
   createdAt?: Date;
   updatedAt?: Date;

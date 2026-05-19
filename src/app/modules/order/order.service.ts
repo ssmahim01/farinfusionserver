@@ -23,6 +23,7 @@ import { Role } from "../user/user.interface";
 import { CourierServices } from "../courier/courier.service";
 import { Coupon } from "../coupon/coupon.model";
 import { CouponServices } from "../coupon/coupon.service";
+import { JwtPayload } from "jsonwebtoken";
 
 interface TCreateOrderPayload {
   orderType: OrderType;
@@ -197,13 +198,12 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderStatus: OrderStatus.PENDING,
       advanceDetails: payload.advanceDetails?.option
         ? {
-            option: payload.advanceDetails.option,
-            amount: payload.advanceDetails.amount || 0,
-          }
+          option: payload.advanceDetails.option,
+          amount: payload.advanceDetails.amount || 0,
+        }
         : undefined,
+      confirmedBy: null
     };
-
-    // console.log("ORDER PRODUCTS:", JSON.stringify(orderDoc.products, null, 2));
 
     if (payload.couponCode) {
       const coupon = await CouponServices.applyCoupon(
@@ -341,7 +341,8 @@ const getSingleOrder = async (id: string) => {
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");
+    .populate("products.product")
+    .populate("confirmedBy", "name email _id role phone")
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
@@ -484,7 +485,7 @@ const updateOrderCancelStatus = async (
   }
 };
 
-const updateOrderStatus = async (orderId: string, status: string) => {
+const updateOrderStatus = async (orderId: string, status: string, user: JwtPayload) => {
   const existingOrder = await Order.findById(orderId);
 
   if (!existingOrder) {
@@ -496,6 +497,10 @@ const updateOrderStatus = async (orderId: string, status: string) => {
   const updateData: any = {
     orderStatus: status,
   };
+
+  if (status === OrderStatus.CONFIRMED) {
+    updateData.confirmedBy = user.userId;
+  }
 
   const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData, {
     returnDocument: "after",
@@ -838,10 +843,12 @@ const getAllOrders = async (query: Record<string, string>) => {
     .populate("customer", "name email _id role phone")
     .populate("seller", "name email _id role phone")
     .populate("payment")
-    .populate("products.product");
+    .populate("products.product")
+    .populate("confirmedBy", "name email _id role phone")
+
 
   const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
- 
+
   return { data, meta, stats: formattedStats };
 };
 
