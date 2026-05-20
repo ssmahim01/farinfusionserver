@@ -215,7 +215,7 @@ const createCourier = async (orderId: any) => {
       trackingCode: responseData?.consignment_id,
       consignmentId,
       status: CourierStatus.CREATED,
-      deliveryStatus: CourierDeliveryStatus.PENDING,
+      deliveryStatus: DeliveryStatus.COURIERASSIGNED,
       rawResponse: responseData,
     };
 

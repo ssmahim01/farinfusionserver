@@ -19,6 +19,7 @@ export enum OrderStatus {
 
 export enum DeliveryStatus {
   PENDING = "PENDING",
+  COURIERASSIGNED = "COURIERASSIGNED",
   NOT_SHIPPED = "NOT_SHIPPED",
   IN_TRANSIT = "IN_TRANSIT",
   DELIVERED = "DELIVERED",

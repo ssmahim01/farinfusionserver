@@ -92,7 +92,6 @@ const createCourier = async (orderId: string) => {
 
     const success = res.data?.success;
     // console.log("Paperfly create response:", res.data);
-    
 
     const courier = await Courier.create({
       order: order._id,
@@ -107,7 +106,7 @@ const createCourier = async (orderId: string) => {
 
     order.courierName = CourierName.PAPERFLY;
     order.trackingNumber = success?.tracking_number;
-    order.deliveryStatus = DeliveryStatus.PENDING;
+    order.deliveryStatus = DeliveryStatus.COURIERASSIGNED;
 
     await order.save();
 

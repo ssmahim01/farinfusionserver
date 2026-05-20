@@ -218,7 +218,7 @@ const createCourier = async (orderId: string) => {
 
     order.courierName = "STEADFAST";
     order.trackingNumber = consignment?.tracking_code;
-    order.deliveryStatus = DeliveryStatus.IN_TRANSIT;
+    order.deliveryStatus = DeliveryStatus.COURIERASSIGNED;
 
     await order.save();
 
