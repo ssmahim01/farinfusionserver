@@ -24,6 +24,60 @@ const headers = {
   "Content-Type": "application/json",
 };
 
+const MAX_PRODUCT_BRIEF_LENGTH = 200;
+
+const buildProductDescription = (products: any[], maxLength: number) => {
+  let parts = products.map((p: any) => ({
+    name: p.product?.title || "Item",
+    qty: p.quantity || 1,
+  }));
+
+  const buildText = (items: any[]) =>
+    items.map((p) => `${p.name} x${p.qty}`).join(", ");
+
+  let description = buildText(parts);
+
+  if (description.length <= maxLength) {
+    return description;
+  }
+
+  const totalNamesLength = parts.reduce(
+    (sum: number, p: any) => sum + p.name.length,
+    0,
+  );
+
+  const reservedLength = parts.length * 6;
+  const availableForNames = maxLength - reservedLength;
+
+  const shrinkRatio = availableForNames / totalNamesLength;
+  const minLength = 5;
+
+  parts = parts.map((p: any) => {
+    let newLen = Math.floor(p.name.length * shrinkRatio);
+
+    if (newLen < minLength) {
+      newLen = minLength;
+    }
+
+    if (newLen < p.name.length) {
+      return {
+        ...p,
+        name: p.name.slice(0, newLen - 3) + "...",
+      };
+    }
+
+    return p;
+  });
+
+  description = buildText(parts);
+
+  if (description.length > maxLength) {
+    description = description.slice(0, maxLength - 3) + "...";
+  }
+
+  return description;
+};
+
 const mapPaperflyStatus = (statusObj: any): CourierDeliveryStatus => {
   if (!statusObj) {
     return CourierDeliveryStatus.PENDING;
@@ -57,12 +111,17 @@ const mapPaperflyStatus = (statusObj: any): CourierDeliveryStatus => {
 };
 
 const mapOrderToPaperfly = (order: any) => {
+  const products = order.products || [];
+
+  const productBrief = buildProductDescription(
+    products,
+    MAX_PRODUCT_BRIEF_LENGTH,
+  );
+
   return {
     merchantOrderReference: order.customOrderId,
     storeName: "Farin Fusion",
-    productBrief:
-      order.products?.map((p: any) => p.product?.title).join(", ") ||
-      "Customer Order",
+    productBrief: productBrief || "Customer Order",
     packagePrice: order.total,
     max_weight: "1",
     customerName: order.billingDetails?.fullName,
@@ -99,7 +158,7 @@ const createCourier = async (orderId: string) => {
       trackingCode: success?.tracking_number,
       consignmentId: success?.tracking_barcode,
       trackingBarcode: success?.tracking_barcode,
-      merchantOrderReference: success?.merchantOrderReference,
+      merchantOrderReference: String(order?.customOrderId),
       status: CourierStatus.CREATED,
       rawResponse: res.data,
     });
@@ -133,11 +192,14 @@ const trackCourier = async (trackingCode: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Paperfly courier not found");
   }
 
+  const referenceNumber =
+    courier.merchantOrderReference || courier.trackingCode;
+
   try {
     const res = await axios.post(
       `${BASE_URL}/API-Order-Tracking`,
       {
-        ReferenceNumber: courier.merchantOrderReference,
+        ReferenceNumber: referenceNumber,
       },
       {
         auth,
