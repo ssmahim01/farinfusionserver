@@ -42,6 +42,7 @@ export interface ICourier {
   status: CourierStatus;
   deliveryStatus: CourierDeliveryStatus;
   trackingBarcode?: string;
+  merchantOrderReference?: string;
 
   rawResponse?: Record<string, any>;
 

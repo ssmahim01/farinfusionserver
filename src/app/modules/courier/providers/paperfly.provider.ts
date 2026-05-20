@@ -100,6 +100,7 @@ const createCourier = async (orderId: string) => {
       trackingCode: success?.tracking_number,
       consignmentId: success?.tracking_barcode,
       trackingBarcode: success?.tracking_barcode,
+      merchantOrderReference: success?.merchantOrderReference,
       status: CourierStatus.CREATED,
       rawResponse: res.data,
     });
@@ -137,7 +138,7 @@ const trackCourier = async (trackingCode: string) => {
     const res = await axios.post(
       `${BASE_URL}/API-Order-Tracking`,
       {
-        ReferenceNumber: trackingCode,
+        ReferenceNumber: courier.merchantOrderReference,
       },
       {
         auth,

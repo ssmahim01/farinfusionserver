@@ -27,6 +27,10 @@ const courierSchema = new Schema<ICourier>(
       type: String,
       required: false,
     },
+    merchantOrderReference: {
+      type: String,
+      required: false,
+    },
 
     trackingCode: {
       type: String,
