@@ -110,7 +110,7 @@ const mapPaperflyStatus = (statusObj: any): CourierDeliveryStatus => {
   return CourierDeliveryStatus.PENDING;
 };
 
-const mapOrderToPaperfly = (order: any) => {
+const mapOrderToPaperfly = (order: any, merchantReference: string) => {
   const products = order.products || [];
 
   const productBrief = buildProductDescription(
@@ -119,7 +119,7 @@ const mapOrderToPaperfly = (order: any) => {
   );
 
   return {
-    merchantOrderReference: order.customOrderId,
+    merchantOrderReference: merchantReference,
     storeName: "Farin Fusion",
     productBrief: productBrief || "Customer Order",
     packagePrice: order.total,
@@ -137,7 +137,19 @@ const createCourier = async (orderId: string) => {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
 
-  const payload = mapOrderToPaperfly(order);
+  const existingPaperflyCouriers = await Courier.find({
+    order: order._id,
+    courierName: CourierName.PAPERFLY,
+  }).sort({ createdAt: 1 });
+
+  const reassignCount = existingPaperflyCouriers.length;
+
+  const merchantReference =
+    reassignCount === 0
+      ? `${order.customOrderId ?? ""}`
+      : `${order.customOrderId}-R${String(reassignCount).padStart(4, "0")}`;
+
+  const payload = mapOrderToPaperfly(order, merchantReference);
 
   try {
     const res = await axios.post(
@@ -150,7 +162,23 @@ const createCourier = async (orderId: string) => {
     );
 
     const success = res.data?.success;
-    // console.log("Paperfly create response:", res.data);
+
+    if (!success) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        res.data?.message || "Paperfly courier creation failed",
+      );
+    }
+
+    const activeCourier = existingPaperflyCouriers.find(
+      (c) => c.status !== CourierStatus.CANCELLED,
+    );
+
+    if (activeCourier) {
+      activeCourier.status = CourierStatus.CANCELLED;
+      activeCourier.deliveryStatus = CourierDeliveryStatus.CANCELLED;
+      await activeCourier.save();
+    }
 
     const courier = await Courier.create({
       order: order._id,
@@ -158,7 +186,7 @@ const createCourier = async (orderId: string) => {
       trackingCode: success?.tracking_number,
       consignmentId: success?.tracking_barcode,
       trackingBarcode: success?.tracking_barcode,
-      merchantOrderReference: String(order?.customOrderId),
+      merchantOrderReference: merchantReference,
       status: CourierStatus.CREATED,
       rawResponse: res.data,
     });
@@ -171,12 +199,13 @@ const createCourier = async (orderId: string) => {
 
     return courier;
   } catch (error: any) {
-    console.log("Paperfly courier creation failed:", error?.response?.data);
+    console.log("Paperfly courier creation failed:", error);
 
     throw new AppError(
       httpStatus.BAD_REQUEST,
       error?.response?.data?.error?.message ||
         error?.response?.data?.message ||
+        error?.message ||
         "Paperfly courier creation failed",
     );
   }
