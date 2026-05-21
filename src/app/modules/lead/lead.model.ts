@@ -25,6 +25,19 @@ const LeadSchema = new Schema<ILead>(
       unique: true,
       index: true,
     },
+    fraudProfile: {
+      totalOrders: { type: Number, default: 0 },
+      deliveredOrders: { type: Number, default: 0 },
+      cancelledOrders: { type: Number, default: 0 },
+      successRate: { type: Number, default: 0 },
+      cancelRate: { type: Number, default: 0 },
+      risk: {
+        type: String,
+        enum: ["SAFE", "MEDIUM", "HIGH", "FAKE"],
+        default: "SAFE",
+      },
+      isFakeCustomer: { type: Boolean, default: false },
+    },
     address: {
       type: String,
       required: [true, "Address is required"],

@@ -108,19 +108,22 @@ const updateLeadService = async (
   decodedToken: JwtPayload,
 ) => {
   const existingLead = await Lead.findById(leadId);
-    if (payload.assignedBy && decodedToken.role !== "ADMIN") {
-        throw new AppError(httpStatus.FORBIDDEN, "Only admin can assign leads to others");
+  if (payload.assignedBy && decodedToken.role !== "ADMIN") {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Only admin can assign leads to others",
+    );
+  }
 
-    }
+  if (!existingLead) {
+    throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
+  }
 
-    if (!existingLead) {
-        throw new AppError(httpStatus.NOT_FOUND, "Lead not found");
-    }
-
-    const updatedLead = await Lead.findByIdAndUpdate(leadId, payload, { new: true });
-    return updatedLead;
+  const updatedLead = await Lead.findByIdAndUpdate(leadId, payload, {
+    new: true,
+  });
+  return updatedLead;
 };
-
 
 const checkFraudByPhone = async (phone: string) => {
   if (!phone) {
@@ -137,9 +140,9 @@ const checkFraudByPhone = async (phone: string) => {
       {
         params: { phone: normalizedPhone },
         headers: {
-          Authorization: `Bearer ${process.env.STEADFAST_API_KEY}`, 
+          Authorization: `Bearer ${process.env.STEADFAST_API_KEY}`,
         },
-      }
+      },
     );
 
     const data = response.data;
@@ -152,8 +155,16 @@ const checkFraudByPhone = async (phone: string) => {
     const cancelRate = total ? (cancelled / total) * 100 : 0;
 
     let risk = "SAFE";
-    if (cancelRate > 50) risk = "HIGH";
-    else if (cancelRate > 25) risk = "MEDIUM";
+    let isFakeCustomer = false;
+
+    if (cancelled >= 2) {
+      risk = "FAKE";
+      isFakeCustomer = true;
+    } else if (cancelRate > 50) {
+      risk = "HIGH";
+    } else if (cancelRate > 25) {
+      risk = "MEDIUM";
+    }
 
     return {
       total,
@@ -162,6 +173,7 @@ const checkFraudByPhone = async (phone: string) => {
       successRate: Number(successRate.toFixed(1)),
       cancelRate: Number(cancelRate.toFixed(1)),
       risk,
+      isFakeCustomer,
     };
   } catch (error: any) {
     console.warn("Steadfast API failed → using local DB");
@@ -175,19 +187,27 @@ const checkFraudByPhone = async (phone: string) => {
     const total = orders.length;
 
     const delivered = orders.filter(
-      (o) => o.deliveryStatus === "DELIVERED"
+      (o) => o.deliveryStatus === "DELIVERED",
     ).length;
 
     const cancelled = orders.filter(
-      (o) => o.orderStatus === "CANCELLED"
+      (o) => o.orderStatus === "CANCELLED",
     ).length;
 
     const successRate = total ? (delivered / total) * 100 : 0;
     const cancelRate = total ? (cancelled / total) * 100 : 0;
 
     let risk = "SAFE";
-    if (cancelRate > 50) risk = "HIGH";
-    else if (cancelRate > 25) risk = "MEDIUM";
+    let isFakeCustomer = false;
+
+    if (cancelled >= 2) {
+      risk = "FAKE";
+      isFakeCustomer = true;
+    } else if (cancelRate > 50) {
+      risk = "HIGH";
+    } else if (cancelRate > 25) {
+      risk = "MEDIUM";
+    }
 
     return {
       total,
@@ -196,6 +216,7 @@ const checkFraudByPhone = async (phone: string) => {
       successRate: Number(successRate.toFixed(1)),
       cancelRate: Number(cancelRate.toFixed(1)),
       risk,
+      isFakeCustomer,
     };
   }
 };
@@ -205,11 +226,18 @@ const getSingleLead = async (id: string) => {
     "assignedBy",
     "name email phone",
   );
+
   if (!lead) {
     throw new AppError(httpStatus.NOT_FOUND, "Lead Not Found");
   }
+
+  const fraudProfile = await checkFraudByPhone(lead.phone);
+
   return {
-    data: lead,
+    data: {
+      ...lead.toObject(),
+      fraudProfile,
+    },
   };
 };
 
@@ -271,9 +299,49 @@ const getAllLeads = async (query: Record<string, string>) => {
         createdAt: { $gte: start, $lte: end },
       });
 
+      const orders = await Order.find({
+        "billingDetails.phone": lead.phone,
+        isDeleted: false,
+        isPublished: true,
+      }).select("deliveryStatus orderStatus");
+
+      const total = orders.length;
+
+      const delivered = orders.filter(
+        (o) => o.deliveryStatus === "DELIVERED",
+      ).length;
+
+      const cancelled = orders.filter(
+        (o) => o.orderStatus === "CANCELLED",
+      ).length;
+
+      const successRate = total ? (delivered / total) * 100 : 0;
+      const cancelRate = total ? (cancelled / total) * 100 : 0;
+
+      let risk = "SAFE";
+      let isFakeCustomer = false;
+
+      if (cancelled >= 2) {
+        risk = "FAKE";
+        isFakeCustomer = true;
+      } else if (cancelRate > 50) {
+        risk = "HIGH";
+      } else if (cancelRate > 25) {
+        risk = "MEDIUM";
+      }
+
       return {
         ...lead.toObject(),
         hasOrderedToday: !!hasOrder,
+        fraudProfile: {
+          totalOrders: total,
+          deliveredOrders: delivered,
+          cancelledOrders: cancelled,
+          successRate: Number(successRate.toFixed(1)),
+          cancelRate: Number(cancelRate.toFixed(1)),
+          risk,
+          isFakeCustomer,
+        },
       };
     }),
   );
