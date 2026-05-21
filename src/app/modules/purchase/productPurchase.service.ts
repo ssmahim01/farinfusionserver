@@ -10,6 +10,7 @@ import {
 } from "./productPurchase.interface";
 import { ProductPurchase } from "./productPurchase.model";
 import { productPurchaseSearchableFields } from "./productPurchase.constant";
+import mongoose from "mongoose";
 
 const createPurchase = async (
   payload: Partial<IProductPurchase>,
@@ -19,30 +20,60 @@ const createPurchase = async (
     throw new AppError(httpStatus.BAD_REQUEST, "Products are required");
   }
 
-  let grandTotal = 0;
+  const session = await mongoose.startSession();
 
-  for (const item of payload.products) {
-    const product = await Product.findById(item.product);
+  try {
+    session.startTransaction();
 
-    if (!product) {
-      throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+    let grandTotal = 0;
+
+    for (const item of payload.products) {
+      const product = await Product.findById(item.product).session(session);
+
+      if (!product) {
+        throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+      }
+
+      item.quantity = Number(item.quantity);
+      item.buyingPrice = Number(item.buyingPrice);
+
+      if (isNaN(item.quantity) || item.quantity <= 0) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Invalid quantity");
+      }
+
+      if (isNaN(item.buyingPrice) || item.buyingPrice < 0) {
+        throw new AppError(httpStatus.BAD_REQUEST, "Invalid buying price");
+      }
+
+      item.totalAmount = item.quantity * item.buyingPrice;
+
+      grandTotal += item.totalAmount;
+
+      product.availableStock = (product.availableStock || 0) + item.quantity;
+
+      product.totalAddedStock = (product.totalAddedStock || 0) + item.quantity;
+
+      product.buyingPrice = item.buyingPrice;
+
+      await product.save({ session });
     }
 
-    item.quantity = Number(item.quantity);
-    item.buyingPrice = Number(item.buyingPrice);
-    item.totalAmount = item.quantity * item.buyingPrice;
+    payload.grandTotal = grandTotal;
+    payload.createdBy = user.userId;
 
-    grandTotal += item.totalAmount;
+    const purchase = await ProductPurchase.create([payload], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return await ProductPurchase.findById(purchase[0]._id)
+      .populate("products.product")
+      .populate("createdBy", "name email");
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  payload.grandTotal = grandTotal;
-  payload.createdBy = user.userId;
-
-  const purchase = await ProductPurchase.create(payload);
-
-  return await ProductPurchase.findById(purchase._id)
-    .populate("products.product")
-    .populate("createdBy", "name email");
 };
 
 const getAllPurchases = async (query: Record<string, string>) => {
@@ -87,39 +118,84 @@ const updatePurchase = async (
   id: string,
   payload: Partial<IProductPurchase>,
 ) => {
-  const purchase = await ProductPurchase.findById(id);
+  const session = await mongoose.startSession();
 
-  if (!purchase) {
-    throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
-  }
+  try {
+    session.startTransaction();
 
-  if (payload.products?.length) {
-    let grandTotal = 0;
+    const purchase = await ProductPurchase.findById(id).session(session);
 
-    for (const item of payload.products) {
-      const product = await Product.findById(item.product);
-
-      if (!product) {
-        throw new AppError(httpStatus.NOT_FOUND, "Product not found");
-      }
-
-      item.quantity = Number(item.quantity);
-      item.buyingPrice = Number(item.buyingPrice);
-      item.totalAmount = item.quantity * item.buyingPrice;
-
-      grandTotal += item.totalAmount;
+    if (!purchase) {
+      throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
     }
 
-    payload.grandTotal = grandTotal;
+    if (payload.products?.length) {
+      // reverse old stock
+      for (const oldItem of purchase.products) {
+        const product = await Product.findById(oldItem.product).session(
+          session,
+        );
+
+        if (product) {
+          product.availableStock =
+            (product.availableStock ?? 0) - oldItem.quantity;
+          product.totalAddedStock =
+            (product.totalAddedStock ?? 0) - oldItem.quantity;
+
+          await product.save({ session });
+        }
+      }
+
+      let grandTotal = 0;
+
+      for (const item of payload.products) {
+        const product = await Product.findById(item.product).session(session);
+
+        if (!product) {
+          throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+        }
+
+        item.quantity = Number(item.quantity);
+        item.buyingPrice = Number(item.buyingPrice);
+
+        if (isNaN(item.quantity) || item.quantity <= 0) {
+          throw new AppError(httpStatus.BAD_REQUEST, "Invalid quantity");
+        }
+
+        if (isNaN(item.buyingPrice) || item.buyingPrice < 0) {
+          throw new AppError(httpStatus.BAD_REQUEST, "Invalid buying price");
+        }
+
+        item.totalAmount = item.quantity * item.buyingPrice;
+
+        grandTotal += item.totalAmount;
+
+        product.availableStock = (product.availableStock || 0) + item.quantity;
+        product.totalAddedStock =
+          (product.totalAddedStock || 0) + item.quantity;
+        product.buyingPrice = item.buyingPrice;
+
+        await product.save({ session });
+      }
+
+      payload.grandTotal = grandTotal;
+    }
+
+    Object.assign(purchase, payload);
+
+    await purchase.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return await ProductPurchase.findById(id)
+      .populate("products.product")
+      .populate("createdBy", "name email");
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  Object.assign(purchase, payload);
-
-  await purchase.save();
-
-  return await ProductPurchase.findById(id)
-    .populate("products.product")
-    .populate("createdBy", "name email");
 };
 
 const updatePurchaseStatus = async (
@@ -188,17 +264,52 @@ const getPurchaseStats = async () => {
 };
 
 const deletePurchase = async (id: string) => {
-  const purchase = await ProductPurchase.findById(id);
+  const session = await mongoose.startSession();
 
-  if (!purchase) {
-    throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
+  try {
+    session.startTransaction();
+
+    const purchase = await ProductPurchase.findById(id).session(session);
+
+    if (!purchase) {
+      throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
+    }
+
+    if (purchase.isDeleted) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Already deleted");
+    }
+
+    for (const item of purchase.products) {
+      const product = await Product.findById(item.product).session(session);
+
+      if (product) {
+        product.availableStock = Math.max(
+          0,
+          (product.availableStock || 0) - item.quantity,
+        );
+
+        product.totalAddedStock = Math.max(
+          0,
+          (product.totalAddedStock || 0) - item.quantity,
+        );
+
+        await product.save({ session });
+      }
+    }
+
+    purchase.isDeleted = true;
+
+    await purchase.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return null;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  purchase.isDeleted = true;
-
-  await purchase.save();
-
-  return null;
 };
 
 export const ProductPurchaseServices = {
