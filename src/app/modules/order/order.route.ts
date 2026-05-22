@@ -86,6 +86,12 @@ router.get(
 router.patch("/:id", OrderControllers.updateOrder);
 
 router.patch(
+  "/manual-delivery-status/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.updateManualDeliveryStatus,
+);
+
+router.patch(
   "/:id/assign-seller",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.assignSeller,

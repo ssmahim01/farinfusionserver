@@ -108,7 +108,7 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await OrderServices.updateOrderStatus(
     orderId as string,
     orderStatus,
-    user
+    user,
   );
 
   sendResponse(res, {
@@ -122,7 +122,6 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
 const updateOrder = catchAsync(async (req: Request, res: Response) => {
   const orderId = req.params.id as string;
   const payload = req.body;
-
 
   const result = await OrderServices.updateOrder(orderId, payload);
 
@@ -199,7 +198,11 @@ const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
   const { orderStatus } = req.body;
   const user = req.user;
 
-  const result = await OrderServices.updateOrderStatus(orderId, orderStatus, user);
+  const result = await OrderServices.updateOrderStatus(
+    orderId,
+    orderStatus,
+    user,
+  );
 
   sendResponse(res, {
     success: true,
@@ -383,9 +386,24 @@ const getAllHoldOrders = catchAsync(async (req, res) => {
   });
 });
 
+const updateManualDeliveryStatus = catchAsync(async (req, res) => {
+  const result = await OrderServices.updateManualDeliveryStatus(
+    req.params.id as string,
+    req.body.deliveryStatus,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Delivery status updated successfully",
+    data: result,
+  });
+});
+
 export const OrderControllers = {
   createOrder,
   getMyOrders,
+  updateManualDeliveryStatus,
   getAllOrders,
   getAllTrashOrders,
   getSingleOrder,

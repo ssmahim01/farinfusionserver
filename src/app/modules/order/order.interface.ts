@@ -19,14 +19,15 @@ export enum OrderStatus {
 
 export enum DeliveryStatus {
   PENDING = "PENDING",
+  PICKED_UP = "PICKED_UP",
+  HOLD = "HOLD",
   COURIERASSIGNED = "COURIERASSIGNED",
   NOT_SHIPPED = "NOT_SHIPPED",
   IN_TRANSIT = "IN_TRANSIT",
   DELIVERED = "DELIVERED",
   RETURNED = "RETURNED",
   CANCELLED = "CANCELLED",
-  IN_REVIEW = "IN_REVIEW"
-
+  IN_REVIEW = "IN_REVIEW",
 }
 
 export enum AdvanceOption {
@@ -72,12 +73,11 @@ export interface IOrder {
   billingDetails?: IBillingDetails;
 
   products: IOrderProduct[];
-  
 
-  advanceDetails? : {
-    option? : AdvanceOption;
-    amount? : number;
-  }
+  advanceDetails?: {
+    option?: AdvanceOption;
+    amount?: number;
+  };
 
   subtotal: number;
   discount: number;
@@ -97,7 +97,7 @@ export interface IOrder {
   isDeleted?: boolean;
   seller?: Types.ObjectId;
 
-  confirmedBy?: Types.ObjectId | null
+  confirmedBy?: Types.ObjectId | null;
 
   createdAt?: Date;
   updatedAt?: Date;

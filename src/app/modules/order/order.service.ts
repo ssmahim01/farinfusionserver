@@ -197,11 +197,11 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderStatus: OrderStatus.PENDING,
       advanceDetails: payload.advanceDetails?.option
         ? {
-          option: payload.advanceDetails.option,
-          amount: payload.advanceDetails.amount || 0,
-        }
+            option: payload.advanceDetails.option,
+            amount: payload.advanceDetails.amount || 0,
+          }
         : undefined,
-      confirmedBy: null
+      confirmedBy: null,
     };
 
     if (payload.couponCode) {
@@ -218,8 +218,15 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       });
     }
 
+    if (
+      payload.advanceDetails?.amount &&
+      payload.advanceDetails.amount > orderDoc.total
+    ) {
+      throw new AppError(400, "Advance amount cannot exceed payable total");
+    }
+
     if (orderDoc.advanceDetails?.option && orderDoc.advanceDetails?.amount) {
-      orderDoc.total = orderDoc.total - orderDoc.advanceDetails.amount;
+      orderDoc.total = orderDoc.total;
     }
 
     const isUserExist = await User.findOne({
@@ -276,7 +283,7 @@ const createOrder = async (payload: TCreateOrderPayload) => {
         {
           order: orderId,
           transactionId,
-          amount: calculatedOrder.totalPrice,
+          amount: orderDoc.total,
 
           paymentStatus:
             payload.paymentMethod === PaymentMethod.COD
@@ -341,12 +348,144 @@ const getSingleOrder = async (id: string) => {
     .populate("seller", "name email _id role phone")
     .populate("payment")
     .populate("products.product")
-    .populate("confirmedBy", "name email _id role phone")
+    .populate("confirmedBy", "name email _id role phone");
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
   }
 
   return { data: order };
+};
+
+const updateManualDeliveryStatus = async (
+  orderId: string,
+  deliveryStatus: DeliveryStatus,
+) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const order = await Order.findById(orderId).session(session);
+
+    if (!order) {
+      throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+    }
+
+    if (order.courierName) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Courier assigned orders must be updated from courier tracking",
+      );
+    }
+
+    if (
+      [
+        OrderStatus.COMPLETED,
+        OrderStatus.CANCELLED,
+        OrderStatus.DAMAGE,
+      ].includes(order.orderStatus as OrderStatus)
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Finalized orders cannot be updated manually",
+      );
+    }
+
+    const allowedStatuses = [
+      DeliveryStatus.PICKED_UP,
+      DeliveryStatus.DELIVERED,
+      DeliveryStatus.HOLD,
+      DeliveryStatus.IN_TRANSIT,
+      DeliveryStatus.CANCELLED,
+    ];
+
+    if (!allowedStatuses.includes(deliveryStatus)) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Unsupported delivery status");
+    }
+
+    if (
+      order.deliveryStatus === deliveryStatus &&
+      deliveryStatus !== DeliveryStatus.PICKED_UP
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Order already in this delivery status",
+      );
+    }
+
+    if (
+      [DeliveryStatus.HOLD, DeliveryStatus.IN_TRANSIT].includes(
+        deliveryStatus,
+      ) &&
+      order.orderStatus !== OrderStatus.CONFIRMED
+    ) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Only confirmed orders can be updated to hold or transit",
+      );
+    }
+
+    if (
+      deliveryStatus === DeliveryStatus.PICKED_UP ||
+      deliveryStatus === DeliveryStatus.DELIVERED
+    ) {
+      order.deliveryStatus = DeliveryStatus.DELIVERED;
+      order.orderStatus = OrderStatus.COMPLETED;
+    }
+
+    if (deliveryStatus === DeliveryStatus.HOLD) {
+      order.deliveryStatus = DeliveryStatus.HOLD;
+      order.orderStatus = OrderStatus.CONFIRMED;
+    }
+
+    if (deliveryStatus === DeliveryStatus.IN_TRANSIT) {
+      order.deliveryStatus = DeliveryStatus.IN_TRANSIT;
+      order.orderStatus = OrderStatus.CONFIRMED;
+    }
+
+    if (deliveryStatus === DeliveryStatus.CANCELLED) {
+      if (!(order as any).isRestocked) {
+        for (const item of order.products) {
+          const product = await Product.findById(item.product).session(session);
+
+          if (!product) {
+            throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+          }
+
+          await Product.findByIdAndUpdate(
+            item.product,
+            {
+              $inc: {
+                availableStock: item.quantity,
+                totalSold: -Math.min(product?.totalSold ?? 0, item.quantity),
+              },
+            },
+            { session },
+          );
+        }
+
+        (order as any).isRestocked = true;
+      }
+
+      order.deliveryStatus = DeliveryStatus.CANCELLED;
+      order.orderStatus = OrderStatus.CANCELLED;
+    }
+
+    await order.save({ session });
+
+    await session.commitTransaction();
+
+    return await Order.findById(orderId)
+      .populate("customer", "name email _id role phone")
+      .populate("seller", "name email _id role phone")
+      .populate("payment")
+      .populate("products.product");
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await session.endSession();
+  }
 };
 
 const deleteOrder = async (id: string) => {
@@ -484,7 +623,11 @@ const updateOrderCancelStatus = async (
   }
 };
 
-const updateOrderStatus = async (orderId: string, status: string, user: JwtPayload) => {
+const updateOrderStatus = async (
+  orderId: string,
+  status: string,
+  user: JwtPayload,
+) => {
   const existingOrder = await Order.findById(orderId);
 
   if (!existingOrder) {
@@ -843,8 +986,7 @@ const getAllOrders = async (query: Record<string, string>) => {
     .populate("seller", "name email _id role phone")
     .populate("payment")
     .populate("products.product")
-    .populate("confirmedBy", "name email _id role phone")
-
+    .populate("confirmedBy", "name email _id role phone");
 
   const [data, meta] = await Promise.all([ordersData, queryBuilder.getMeta()]);
 
@@ -1244,6 +1386,7 @@ export const OrderServices = {
   getAllDamagedProducts,
   exchangeOrderItem,
   markOrderDamage,
+  updateManualDeliveryStatus,
   getMyScheduledOrders,
   getMyOrders,
   updateOrderCancelStatus,
