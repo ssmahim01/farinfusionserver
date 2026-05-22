@@ -12,6 +12,7 @@ import { dashboardRoutes } from "../modules/dashboard/dashboard.route";
 import { couponRoutes } from "../modules/coupon/coupon.route";
 import { permissionRoutes } from "../modules/permission/permission.route";
 import { ProductPurchaseRoutes } from "../modules/purchase/productPurchase.route";
+import { returnRoutes } from "../modules/return/return.route";
 
 export const router = Router();
 
@@ -35,6 +36,10 @@ const moduleRoutes = [
   {
     path: "/product",
     route: productRoutes,
+  },
+  {
+    path: "/returns",
+    route: returnRoutes,
   },
   {
     path: "/lead",

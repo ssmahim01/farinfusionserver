@@ -1,50 +1,53 @@
 import { Types } from "mongoose";
 
 export enum ProductStatus {
-    ACTIVE = "ACTIVE",
-    INACTIVE = "INACTIVE",
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
 }
 
 export interface IProduct {
-    _id?: Types.ObjectId;
-     isCusFavorite?: boolean
+  _id?: Types.ObjectId;
+  isCusFavorite?: boolean;
+  totalReturned: number;
 
-    // Basic Info
-    title: string;                  // e.g., "Aveeno Baby Sunscreen"
-    brand: Types.ObjectId;           // Reference to Brand collection
-    category: Types.ObjectId;        // Reference to Category collection
-    size?: string;                  // e.g., "88ml"
-    slug?: string;                  // URL-friendly slug
+  restockCount: number;
 
-    // Pricing
-    price: number;                  // e.g., 2350
-    discountPrice?: number;         // optional discounted price
-    buyingPrice?: number;
+  // Basic Info
+  title: string; // e.g., "Aveeno Baby Sunscreen"
+  brand: Types.ObjectId; // Reference to Brand collection
+  category: Types.ObjectId; // Reference to Category collection
+  size?: string; // e.g., "88ml"
+  slug?: string; // URL-friendly slug
 
-    // Stock / Availability
-    totalAddedStock?: number;        // Total stock ever added for this product
-    totalSold?: number;              // total stock sold
-    availableStock?: number;         // calculated as totalAddedStock - totalSold
-    status: ProductStatus;
-    isDeleted?: boolean;
-    // Media
-    images: string[];               // Array of image URLs
+  // Pricing
+  price: number; // e.g., 2350
+  discountPrice?: number; // optional discounted price
+  buyingPrice?: number;
 
-    // Ratings & Reviews
-    ratings?: number;               // average rating
-    reviews?: {
-        user: string;
-        rating: number;
-        comment: string;
-        date: Date;
-    }[];
+  // Stock / Availability
+  totalAddedStock?: number; // Total stock ever added for this product
+  totalSold?: number; // total stock sold
+  availableStock?: number; // calculated as totalAddedStock - totalSold
+  status: ProductStatus;
+  isDeleted?: boolean;
+  // Media
+  images: string[]; // Array of image URLs
 
-    isFeatured: boolean
+  // Ratings & Reviews
+  ratings?: number; // average rating
+  reviews?: {
+    user: string;
+    rating: number;
+    comment: string;
+    date: Date;
+  }[];
 
-    // Description
-    description: string;            // Full product description
+  isFeatured: boolean;
 
-    // Optional meta
-    createdAt?: Date;
-    updatedAt?: Date;
+  // Description
+  description: string; // Full product description
+
+  // Optional meta
+  createdAt?: Date;
+  updatedAt?: Date;
 }

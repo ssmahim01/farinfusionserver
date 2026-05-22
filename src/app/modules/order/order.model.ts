@@ -1,5 +1,10 @@
 import { Schema, model } from "mongoose";
-import { AdvanceOption, DeliveryStatus, IOrder, OrderStatus } from "./order.interface";
+import {
+  AdvanceOption,
+  DeliveryStatus,
+  IOrder,
+  OrderStatus,
+} from "./order.interface";
 
 // customer order Id counter
 const counterSchema = new Schema({
@@ -45,7 +50,7 @@ const orderSchema = new Schema<IOrder>(
       amount: {
         type: Number,
         default: 0,
-        required: false
+        required: false,
       },
     },
 
@@ -62,6 +67,15 @@ const orderSchema = new Schema<IOrder>(
     ],
 
     partialNotes: { type: String },
+    returnCount: {
+      type: Number,
+      default: 0,
+    },
+
+    totalReturnedQuantity: {
+      type: Number,
+      default: 0,
+    },
 
     exchangeHistory: [
       {

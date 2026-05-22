@@ -62,6 +62,8 @@ export interface IOrder {
   scheduleType?: string;
   scheduledAt?: Date;
   isPublished?: boolean;
+  returnCount?: number;
+  totalReturnedQuantity?: number;
 
   orderType: OrderType;
   exchangeHistory?: any[];

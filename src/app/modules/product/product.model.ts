@@ -66,7 +66,15 @@ const productSchema = new Schema<IProduct>(
     buyingPrice: {
       type: Number,
     },
+    totalReturned: {
+      type: Number,
+      default: 0,
+    },
 
+    restockCount: {
+      type: Number,
+      default: 0,
+    },
     // Stock
     totalAddedStock: {
       type: Number,
