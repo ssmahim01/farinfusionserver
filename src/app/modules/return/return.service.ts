@@ -99,51 +99,64 @@ const createReturn = async (
         );
       }
 
-      const updatePayload: Record<string, any> = {
-        $inc: {
-          totalReturned: Number(item.quantity),
-        },
-      };
-
-      if (item.shouldRestock && !item.isDamaged) {
-        updatePayload.$inc.availableStock = Number(item.quantity);
-        updatePayload.$inc.totalSold = -Number(item.quantity);
-        updatePayload.$inc.restockCount = 1;
-      }
-
-      const updatedProduct = await Product.findOneAndUpdate(
-        {
-          _id: item.product,
-          ...(item.shouldRestock && !item.isDamaged
-            ? {
-                totalSold: { $gte: Number(item.quantity) },
-              }
-            : {}),
-        },
-        updatePayload,
-        {
-          session,
-          new: true,
-        },
-      );
-
-      if (!updatedProduct) {
+      if (!item.product) {
         throw new AppError(
           httpStatus.BAD_REQUEST,
-          "Invalid stock adjustment. Return quantity exceeds sold quantity.",
+          "Invalid product id received",
         );
       }
 
-      const product = updatedProduct;
+      // console.log("RETURN PRODUCT ID:", item.product);
+
+      const product = await Product.findById(item.product).session(session);
+
+      if (!product) {
+        throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+      }
+
+      const soldDeduction = Math.min(
+        Number(product.totalSold || 0),
+        Number(item.quantity || 0),
+      );
+
+      if (item.shouldRestock && !item.isDamaged) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              availableStock: Number(item.quantity),
+              totalReturned: Number(item.quantity),
+              restockCount: 1,
+              totalSold: soldDeduction,
+            },
+          },
+          {
+            session,
+            new: true,
+          },
+        );
+      } else {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              totalReturned: Number(item.quantity),
+            },
+          },
+          {
+            session,
+            new: true,
+          },
+        );
+      }
 
       item.orderedQuantity = orderedProduct.quantity;
       item.buyingPrice = product.buyingPrice || 0;
       item.sellingPrice = product.price || 0;
-      item.restockCount = item.shouldRestock && !item.isDamaged ? 1 : 0;
+      item.restockCount = 1;
     }
 
     payload.customer = order.customer || undefined;
-
     payload.customerInfo = {
       name: order.billingDetails?.fullName || "Unknown Customer",
       phone: order.billingDetails?.phone || "",

@@ -9,23 +9,52 @@ import {
   CourierStatus,
 } from "../courier.interface";
 import { Order } from "../../order/order.model";
-import { DeliveryStatus, OrderStatus } from "../../order/order.interface";
-import { Product } from "../../product/product.model";
+import { DeliveryStatus } from "../../order/order.interface";
 import { syncCourierOrderStatus } from "../courier.service";
+import { CourierSettings } from "../../courierSettings/courierSettings.model";
 
-const BASE_URL = "https://portal.packzy.com/api/v1";
+// const BASE_URL = "https://portal.packzy.com/api/v1";
 
-const headers = {
-  "Api-Key": process.env.STEADFAST_API_KEY,
-  "Secret-Key": process.env.STEADFAST_SECRET_KEY,
-  "Content-Type": "application/json",
+// const headers = {
+//   "Api-Key": process.env.STEADFAST_API_KEY,
+//   "Secret-Key": process.env.STEADFAST_SECRET_KEY,
+//   "Content-Type": "application/json",
+// };
+
+const getSteadfastConfig = async () => {
+  const settings: any = await CourierSettings.findOne({
+    provider: CourierName.STEADFAST,
+    isActive: true,
+    isDeleted: false,
+  });
+
+  if (!settings) {
+    throw new AppError(httpStatus.NOT_FOUND, "Steadfast settings not found");
+  }
+
+  const apiKey = String(settings.config.get("apiKey") || "").trim();
+  const secretKey = String(settings.config.get("secretKey") || "").trim();
+  const baseUrl = String(
+    settings.config.get("baseUrl") || "https://portal.packzy.com/api/v1",
+  ).trim();
+
+  if (!apiKey || !secretKey) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Steadfast credentials missing");
+  }
+
+  return {
+    baseUrl,
+    headers: {
+      "Api-Key": apiKey,
+      "Secret-Key": secretKey,
+      "Content-Type": "application/json",
+    },
+  };
 };
 
 const MAX_DESC_LENGTH = 500;
 
-const mapSteadfastStatus = (
-  apiStatus: string,
-): CourierDeliveryStatus => {
+const mapSteadfastStatus = (apiStatus: string): CourierDeliveryStatus => {
   switch (apiStatus?.toLowerCase()) {
     case "pending":
       return CourierDeliveryStatus.PENDING;
@@ -127,21 +156,19 @@ const mapOrderToSteadfast = (order: any) => {
 };
 
 const trackCourier = async (trackingCode: string) => {
+  const { baseUrl, headers } = await getSteadfastConfig();
   const courier = await Courier.findOne({
     trackingCode,
     courierName: CourierName.STEADFAST,
   });
 
   if (!courier) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Steadfast courier not found",
-    );
+    throw new AppError(httpStatus.NOT_FOUND, "Steadfast courier not found");
   }
 
   try {
     const res = await axios.get(
-      `${BASE_URL}/status_by_trackingcode/${trackingCode}`,
+      `${baseUrl}/status_by_trackingcode/${trackingCode}`,
       {
         headers,
         timeout: 15000,
@@ -149,9 +176,7 @@ const trackCourier = async (trackingCode: string) => {
     );
 
     const apiStatus =
-      res.data?.delivery_status ||
-      res.data?.status ||
-      res.data?.data?.status;
+      res.data?.delivery_status || res.data?.status || res.data?.data?.status;
 
     if (!apiStatus) {
       throw new AppError(
@@ -177,13 +202,13 @@ const trackCourier = async (trackingCode: string) => {
   } catch (error: any) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      error?.response?.data?.message ||
-        "Steadfast tracking failed",
+      error?.response?.data?.message || "Steadfast tracking failed",
     );
   }
 };
 
 const createCourier = async (orderId: string) => {
+  const { baseUrl, headers } = await getSteadfastConfig();
   const order = await Order.findById({ _id: orderId }).populate(
     "products.product",
   );
@@ -201,7 +226,7 @@ const createCourier = async (orderId: string) => {
   const payload = mapOrderToSteadfast(order);
 
   try {
-    const res = await axios.post(`${BASE_URL}/create_order`, payload, {
+    const res = await axios.post(`${baseUrl}/create_order`, payload, {
       headers,
     });
 

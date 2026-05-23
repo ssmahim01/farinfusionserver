@@ -13,6 +13,7 @@ import { couponRoutes } from "../modules/coupon/coupon.route";
 import { permissionRoutes } from "../modules/permission/permission.route";
 import { ProductPurchaseRoutes } from "../modules/purchase/productPurchase.route";
 import { returnRoutes } from "../modules/return/return.route";
+import { courierSettingsRoutes } from "../modules/courierSettings/courierSettings.route";
 
 export const router = Router();
 
@@ -68,6 +69,10 @@ const moduleRoutes = [
   {
     path: "/dashboard",
     route: dashboardRoutes,
+  },
+  {
+    path: "/courier-settings",
+    route: courierSettingsRoutes,
   },
   {
     path: "/product-purchase",

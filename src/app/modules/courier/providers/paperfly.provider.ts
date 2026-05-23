@@ -11,17 +11,49 @@ import {
 import { Order } from "../../order/order.model";
 import { DeliveryStatus } from "../../order/order.interface";
 import { syncCourierOrderStatus } from "../courier.service";
+import { getCourierConfig } from "./getCourierConfig";
+import { CourierProvider } from "../../courierSettings/courierSettings.interface";
 
-const BASE_URL = process.env.PAPERFLY_BASE_URL!;
+// const BASE_URL = process.env.PAPERFLY_BASE_URL!;
 
-const auth = {
-  username: process.env.PAPERFLY_USERNAME!,
-  password: process.env.PAPERFLY_PASSWORD!,
-};
+// const auth = {
+//   username: process.env.PAPERFLY_USERNAME!,
+//   password: process.env.PAPERFLY_PASSWORD!,
+// };
 
-const headers = {
-  paperflykey: process.env.PAPERFLY_API_KEY!,
-  "Content-Type": "application/json",
+// const headers = {
+//   paperflykey: process.env.PAPERFLY_API_KEY!,
+//   "Content-Type": "application/json",
+// };
+
+const getPaperflyCredentials = async () => {
+  const settings = await getCourierConfig(CourierProvider.PAPERFLY);
+
+  if (
+    !settings.config.baseUrl ||
+    !settings.config.username ||
+    !settings.config.password ||
+    !settings.config.apiKey
+  ) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Paperfly credentials are incomplete",
+    );
+  }
+
+  return {
+    baseUrl: settings.config.baseUrl,
+    auth: {
+      username: settings.config.username,
+      password: settings.config.password,
+    },
+    headers: {
+      paperflykey: settings.config.apiKey,
+      "Content-Type": "application/json",
+    },
+    pickupInfo: settings.pickupInfo,
+    isSandbox: settings.isSandbox,
+  };
 };
 
 const MAX_PRODUCT_BRIEF_LENGTH = 200;
@@ -152,12 +184,14 @@ const createCourier = async (orderId: string) => {
   const payload = mapOrderToPaperfly(order, merchantReference);
 
   try {
+    const config = await getPaperflyCredentials();
+
     const res = await axios.post(
-      `${BASE_URL}/merchant/api/service/new_order_v2.php`,
+      `${config.baseUrl}/merchant/api/service/new_order_v2.php`,
       payload,
       {
-        auth,
-        headers,
+        auth: config.auth,
+        headers: config.headers,
       },
     );
 
@@ -225,14 +259,16 @@ const trackCourier = async (trackingCode: string) => {
     courier.merchantOrderReference || courier.trackingCode;
 
   try {
+    const config = await getPaperflyCredentials();
+
     const res = await axios.post(
-      `${BASE_URL}/API-Order-Tracking`,
+      `${config.baseUrl}/API-Order-Tracking`,
       {
         ReferenceNumber: referenceNumber,
       },
       {
-        auth,
-        headers,
+        auth: config.auth,
+        headers: config.headers,
         timeout: 15000,
       },
     );
