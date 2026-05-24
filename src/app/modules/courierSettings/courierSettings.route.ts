@@ -12,45 +12,52 @@ const router = express.Router();
 
 router.post(
   "/create-courier-settings",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+
   validateRequest(createCourierSettingsZodSchema),
   CourierSettingsControllers.createCourierSettings,
 );
 
 router.get(
   "/all-courier-settings",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+ 
   CourierSettingsControllers.getAllCourierSettings,
 );
 
 router.get(
   "/provider/:provider",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+  
   CourierSettingsControllers.getCourierSettingsByProvider,
 );
 
 router.get(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+
   CourierSettingsControllers.getSingleCourierSettings,
 );
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+  
   validateRequest(updateCourierSettingsZodSchema),
   CourierSettingsControllers.updateCourierSettings,
 );
 
 router.patch(
   "/:id/toggle-status",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+ 
   CourierSettingsControllers.toggleCourierSettingsStatus,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN),
+    checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+  
   CourierSettingsControllers.deleteCourierSettings,
 );
 

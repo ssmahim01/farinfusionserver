@@ -10,33 +10,35 @@ const router = express.Router();
 
 router.post(
   "/create-return",
-  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
-//   validateRequest(ReturnValidations.createReturnValidationSchema),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+  //   validateRequest(ReturnValidations.createReturnValidationSchema),
   ReturnControllers.createReturn,
 );
 
 router.get(
   "/all-returns",
-  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
   ReturnControllers.getAllReturns,
 );
 
 router.get(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
   ReturnControllers.getSingleReturn,
 );
 
 router.patch(
   "/:id/status",
-  checkAuth(Role.ADMIN, Role.MANAGER),
-//   validateRequest(ReturnValidations.updateReturnStatusValidationSchema),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+
+  //   validateRequest(ReturnValidations.updateReturnStatusValidationSchema),
   ReturnControllers.updateReturnStatus,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS, Role.MODERATOR),
+
   ReturnControllers.deleteReturn,
 );
 
