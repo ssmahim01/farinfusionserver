@@ -12,6 +12,20 @@ import { Order } from "../order/order.model";
 import { Category } from "../category/category.model";
 import { Brand } from "../brand/brand.model";
 
+const generateUniqueBarcode = async () => {
+  let barcode = "";
+  let exists = true;
+
+  while (exists) {
+    const count = await Product.countDocuments();
+    barcode = `FF-${String(count + Math.floor(Math.random() * 999)).padStart(6, "0")}`;
+
+    exists = !!(await Product.findOne({ barcode }));
+  }
+
+  return barcode;
+};
+
 // const createProductService = async (payload: Partial<IProduct>) => {
 //   const isProductExist = await Product.findOne({ name: payload.title });
 //   if (isProductExist) {
@@ -34,6 +48,18 @@ const createProductService = async (
   const isProductExist = await Product.findOne({ title: payload.title });
   if (isProductExist) {
     throw new AppError(httpStatus.CONFLICT, "Product already exists");
+  }
+
+  if (payload.barcode) {
+    const existingBarcode = await Product.findOne({
+      barcode: payload.barcode,
+    });
+
+    if (existingBarcode) {
+      throw new AppError(httpStatus.CONFLICT, "Barcode already exists");
+    }
+  } else {
+    payload.barcode = await generateUniqueBarcode();
   }
 
   const availableStock = payload.availableStock ?? 0;
@@ -89,6 +115,23 @@ const updateProduct = async (
   const product = await Product.findById(productId);
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
+  }
+
+  // barcode validation
+  if (payload.barcode && payload.barcode !== product.barcode) {
+    const existingBarcode = await Product.findOne({
+      barcode: payload.barcode,
+      _id: { $ne: productId },
+    });
+
+    if (existingBarcode) {
+      throw new AppError(httpStatus.CONFLICT, "Barcode already exists");
+    }
+  }
+
+  // auto assign barcode for old products
+  if (!product.barcode && !payload.barcode) {
+    payload.barcode = await generateUniqueBarcode();
   }
 
   // your code override the totalAddedStock

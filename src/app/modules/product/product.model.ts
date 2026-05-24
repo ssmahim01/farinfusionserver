@@ -80,6 +80,12 @@ const productSchema = new Schema<IProduct>(
       type: Number,
       default: 0,
     },
+    barcode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
     totalSold: {
       type: Number,
       default: 0,

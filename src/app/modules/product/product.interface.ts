@@ -9,7 +9,7 @@ export interface IProduct {
   _id?: Types.ObjectId;
   isCusFavorite?: boolean;
   totalReturned: number;
-
+  barcode?: string;
   restockCount: number;
 
   // Basic Info
