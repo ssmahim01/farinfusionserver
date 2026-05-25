@@ -2,6 +2,7 @@ import { Schema, model } from "mongoose";
 import {
   IProductPurchase,
   PaymentStatus,
+  PaymentType,
   PurchaseStatus,
 } from "./productPurchase.interface";
 
@@ -62,6 +63,29 @@ const productPurchaseSchema = new Schema<IProductPurchase>(
     grandTotal: {
       type: Number,
       required: false,
+      min: 0,
+    },
+
+    paymentType: {
+      type: String,
+      enum: Object.values(PaymentType),
+      default: PaymentType.DUE,
+    },
+
+    paymentMethod: {
+      type: String,
+      trim: true,
+    },
+
+    paidAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    dueAmount: {
+      type: Number,
+      default: 0,
       min: 0,
     },
 

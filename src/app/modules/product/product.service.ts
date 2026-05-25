@@ -17,13 +17,30 @@ const generateUniqueBarcode = async () => {
   let exists = true;
 
   while (exists) {
-    const count = await Product.countDocuments();
-    barcode = `FF-${String(count + Math.floor(Math.random() * 999)).padStart(6, "0")}`;
+    barcode = `FF${Date.now()}${Math.floor(Math.random() * 9999)}`;
 
     exists = !!(await Product.findOne({ barcode }));
   }
 
   return barcode;
+};
+
+const assignMissingBarcodes = async () => {
+  const products = await Product.find({
+    $or: [{ barcode: { $exists: false } }, { barcode: null }, { barcode: "" }],
+  });
+
+  let updatedCount = 0;
+
+  for (const product of products) {
+    product.barcode = await generateUniqueBarcode();
+    await product.save();
+    updatedCount++;
+  }
+
+  return {
+    updatedCount,
+  };
 };
 
 // const createProductService = async (payload: Partial<IProduct>) => {
@@ -50,18 +67,6 @@ const createProductService = async (
     throw new AppError(httpStatus.CONFLICT, "Product already exists");
   }
 
-  if (payload.barcode) {
-    const existingBarcode = await Product.findOne({
-      barcode: payload.barcode,
-    });
-
-    if (existingBarcode) {
-      throw new AppError(httpStatus.CONFLICT, "Barcode already exists");
-    }
-  } else {
-    payload.barcode = await generateUniqueBarcode();
-  }
-
   const availableStock = payload.availableStock ?? 0;
 
   payload.availableStock = availableStock;
@@ -72,6 +77,8 @@ const createProductService = async (
   if (user.role === "MANAGER") {
     delete payload.buyingPrice;
   }
+
+  payload.barcode = await generateUniqueBarcode();
 
   const product = await Product.create(payload);
   return product;
@@ -117,21 +124,8 @@ const updateProduct = async (
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
   }
 
-  // barcode validation
-  if (payload.barcode && payload.barcode !== product.barcode) {
-    const existingBarcode = await Product.findOne({
-      barcode: payload.barcode,
-      _id: { $ne: productId },
-    });
-
-    if (existingBarcode) {
-      throw new AppError(httpStatus.CONFLICT, "Barcode already exists");
-    }
-  }
-
-  // auto assign barcode for old products
-  if (!product.barcode && !payload.barcode) {
-    payload.barcode = await generateUniqueBarcode();
+  if (!product.barcode) {
+    product.barcode = await generateUniqueBarcode();
   }
 
   // your code override the totalAddedStock
@@ -536,5 +530,6 @@ export const CategoryServices = {
   getSingleProduct,
   deleteProduct,
   getAllProducts,
+  assignMissingBarcodes,
   getAllTrashProducts,
 };

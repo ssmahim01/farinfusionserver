@@ -19,15 +19,26 @@ router.post(
   ProductControllers.createProduct,
 );
 
+router.post(
+  "/assign-missing-barcodes",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  ProductControllers.assignMissingBarcodes,
+);
+
 router.get("/all-products", ProductControllers.getAllProducts);
 router.get("/all-trash-products", ProductControllers.getAllTrashProducts);
 router.get("/:slug", ProductControllers.getSingleProduct);
-router.delete("/:id", checkAuth(Role.ADMIN, Role.MANAGER), ProductControllers.deleteProduct);
+router.delete(
+  "/:id",
+  checkAuth(Role.ADMIN, Role.MANAGER),
+  ProductControllers.deleteProduct,
+);
 router.patch(
   "/:id/toggle-featured",
   checkAuth(Role.ADMIN, Role.MANAGER),
   ProductControllers.toggleFeatured,
 );
+
 router.patch(
   "/:id",
   checkAuth(Role.ADMIN, Role.MANAGER),

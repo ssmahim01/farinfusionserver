@@ -191,12 +191,19 @@ const trackCourier = async (trackingCode: string) => {
       return courier;
     }
 
+    const collectedAmount = Number(
+      res.data?.cod_amount ||
+        res.data?.consignment?.cod_amount ||
+        res.data?.data?.cod_amount ||
+        0,
+    );
+
     courier.deliveryStatus = mappedStatus;
     courier.rawResponse = res.data;
 
     await courier.save();
 
-    await syncCourierOrderStatus(courier, mappedStatus);
+    await syncCourierOrderStatus(courier, mappedStatus, collectedAmount);
 
     return courier;
   } catch (error: any) {

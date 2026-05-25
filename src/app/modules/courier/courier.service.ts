@@ -113,40 +113,40 @@ const trackCourier = async (trackingCode: string) => {
     throw new AppError(400, "Invalid tracking response");
   }
 
-let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+  let mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
 
-switch (apiStatus?.toLowerCase()) {
-  case "pending":
-    mappedStatus = CourierDeliveryStatus.PENDING;
-    break;
+  switch (apiStatus?.toLowerCase()) {
+    case "pending":
+      mappedStatus = CourierDeliveryStatus.PENDING;
+      break;
 
-  case "picked_up":
-    mappedStatus = CourierDeliveryStatus.PICKED_UP;
-    break;
+    case "picked_up":
+      mappedStatus = CourierDeliveryStatus.PICKED_UP;
+      break;
 
-  case "in_review":
-    mappedStatus = CourierDeliveryStatus.IN_REVIEW;
-    break;
+    case "in_review":
+      mappedStatus = CourierDeliveryStatus.IN_REVIEW;
+      break;
 
-  case "partial_delivered":
-    mappedStatus = CourierDeliveryStatus.PARTIAL;
-    break;
+    case "partial_delivered":
+      mappedStatus = CourierDeliveryStatus.PARTIAL;
+      break;
 
-  case "delivered":
-    mappedStatus = CourierDeliveryStatus.DELIVERED;
-    break;
+    case "delivered":
+      mappedStatus = CourierDeliveryStatus.DELIVERED;
+      break;
 
-  case "cancelled":
-    mappedStatus = CourierDeliveryStatus.CANCELLED;
-    break;
+    case "cancelled":
+      mappedStatus = CourierDeliveryStatus.CANCELLED;
+      break;
 
-  case "hold":
-    mappedStatus = CourierDeliveryStatus.HOLD;
-    break;
+    case "hold":
+      mappedStatus = CourierDeliveryStatus.HOLD;
+      break;
 
-  default:
-    mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
-}
+    default:
+      mappedStatus = CourierDeliveryStatus.IN_TRANSIT;
+  }
 
   if (courier?.deliveryStatus !== mappedStatus) {
     courier.deliveryStatus = mappedStatus;
@@ -154,27 +154,27 @@ switch (apiStatus?.toLowerCase()) {
     await courier.save();
 
     const orderUpdate: any = {
-  deliveryStatus: mappedStatus,
-};
+      deliveryStatus: mappedStatus,
+    };
 
-switch (mappedStatus) {
-  case CourierDeliveryStatus.DELIVERED:
-    orderUpdate.orderStatus = OrderStatus.COMPLETED;
-    break;
+    switch (mappedStatus) {
+      case CourierDeliveryStatus.DELIVERED:
+        orderUpdate.orderStatus = OrderStatus.COMPLETED;
+        break;
 
-  case CourierDeliveryStatus.CANCELLED:
-    orderUpdate.orderStatus = OrderStatus.CANCELLED;
-    break;
+      case CourierDeliveryStatus.CANCELLED:
+        orderUpdate.orderStatus = OrderStatus.CANCELLED;
+        break;
 
-  case CourierDeliveryStatus.PARTIAL:
-    orderUpdate.orderStatus = OrderStatus.PARTIAL;
-    break;
+      case CourierDeliveryStatus.PARTIAL:
+        orderUpdate.orderStatus = OrderStatus.PARTIAL;
+        break;
 
-  default:
-    orderUpdate.orderStatus = OrderStatus.CONFIRMED;
-}
+      default:
+        orderUpdate.orderStatus = OrderStatus.CONFIRMED;
+    }
 
-await Order.findByIdAndUpdate(courier.order, orderUpdate);
+    await Order.findByIdAndUpdate(courier.order, orderUpdate);
 
     if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
       const order = await Order.findById(courier.order).populate(
@@ -264,6 +264,7 @@ const createCourier = async (orderId: string) => {
 export const syncCourierOrderStatus = async (
   courier: any,
   mappedStatus: CourierDeliveryStatus,
+  collectedAmount?: number,
 ) => {
   const orderUpdate: any = {
     deliveryStatus: mappedStatus,
@@ -286,7 +287,12 @@ export const syncCourierOrderStatus = async (
       orderUpdate.orderStatus = OrderStatus.CONFIRMED;
   }
 
-  await Order.findByIdAndUpdate(courier.order, orderUpdate);
+  await Order.findByIdAndUpdate(courier.order, {
+    ...orderUpdate,
+    ...((collectedAmount ?? 0) > 0 && {
+      total: collectedAmount,
+    }),
+  });
 
   if (mappedStatus === CourierDeliveryStatus.CANCELLED) {
     const order = await Order.findById(courier.order);

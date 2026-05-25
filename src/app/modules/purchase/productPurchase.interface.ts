@@ -20,15 +20,31 @@ export interface IPurchaseProduct {
   totalAmount: number;
 }
 
+export enum PaymentType {
+  FULL = "FULL",
+  ADVANCE = "ADVANCE",
+  DUE = "DUE",
+}
+
 export interface IProductPurchase {
   products: IPurchaseProduct[];
 
   supplierName: string;
   supplierPhone?: string;
   supplierAddress?: string;
+    paidAmount?: number;
+  dueAmount?: number;
+  
+  paymentType?: PaymentType;
+  paymentMethod?: string;
 
   grandTotal?: number;
-
+  paymentInfo: {
+    paymentType: "FULL" | "ADVANCE" | "DUE";
+    paidAmount: number;
+    dueAmount: number;
+    paymentMethod?: string;
+  };
   purchaseDate: Date;
 
   paymentStatus: PaymentStatus;

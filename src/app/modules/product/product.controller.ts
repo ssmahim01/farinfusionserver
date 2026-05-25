@@ -194,6 +194,17 @@ const getAllProducts = catchAsync(
   },
 );
 
+const assignMissingBarcodes = catchAsync(async (req, res) => {
+  const result = await CategoryServices.assignMissingBarcodes();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Missing barcodes assigned successfully",
+    data: result,
+  });
+});
+
 const getAllTrashProducts = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
@@ -234,5 +245,6 @@ export const ProductControllers = {
   getAllProducts,
   getAllTrashProducts,
   toggleFeatured,
+  assignMissingBarcodes,
   updateProductTrash,
 };

@@ -12,6 +12,78 @@ import { ProductPurchase } from "./productPurchase.model";
 import { productPurchaseSearchableFields } from "./productPurchase.constant";
 import mongoose from "mongoose";
 
+const validatePaymentData = (
+  grandTotal: number,
+  payload: Partial<IProductPurchase>,
+) => {
+  const paymentType = payload.paymentType;
+  const paidAmount = Number(payload.paidAmount || 0);
+
+  if (!paymentType) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payment type is required");
+  }
+
+  if (paidAmount < 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Paid amount cannot be negative",
+    );
+  }
+
+  if (paidAmount > grandTotal) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Paid amount cannot exceed grand total",
+    );
+  }
+
+  if (
+    (paymentType === "FULL" || paymentType === "ADVANCE") &&
+    !payload.paymentMethod
+  ) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payment method is required");
+  }
+
+  if (paymentType === "FULL" && paidAmount !== grandTotal) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Full payment must equal grand total",
+    );
+  }
+
+  if (paymentType === "ADVANCE" && paidAmount <= 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Advance payment amount required",
+    );
+  }
+
+  if (paymentType === "DUE" && paidAmount > 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Due purchase cannot have paid amount",
+    );
+  }
+
+  const dueAmount = grandTotal - paidAmount;
+
+  let paymentStatus: PaymentStatus;
+
+  if (dueAmount <= 0) {
+    paymentStatus = PaymentStatus.PAID;
+  } else if (paidAmount > 0) {
+    paymentStatus = PaymentStatus.PARTIAL;
+  } else {
+    paymentStatus = PaymentStatus.UNPAID;
+  }
+
+  return {
+    paidAmount,
+    dueAmount,
+    paymentStatus,
+  };
+};
+
 const createPurchase = async (
   payload: Partial<IProductPurchase>,
   user: JwtPayload,
@@ -59,6 +131,13 @@ const createPurchase = async (
     }
 
     payload.grandTotal = grandTotal;
+
+    const paymentData = validatePaymentData(grandTotal, payload);
+
+    payload.paidAmount = paymentData.paidAmount;
+    payload.dueAmount = paymentData.dueAmount;
+    payload.paymentStatus = paymentData.paymentStatus;
+
     payload.createdBy = user.userId;
 
     const purchase = await ProductPurchase.create([payload], { session });
@@ -179,6 +258,12 @@ const updatePurchase = async (
       }
 
       payload.grandTotal = grandTotal;
+
+      const paymentData = validatePaymentData(payload.grandTotal, payload);
+
+      payload.paidAmount = paymentData.paidAmount;
+      payload.dueAmount = paymentData.dueAmount;
+      payload.paymentStatus = paymentData.paymentStatus;
     }
 
     Object.assign(purchase, payload);
