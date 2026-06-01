@@ -78,8 +78,6 @@ const createProductService = async (
     delete payload.buyingPrice;
   }
 
-  payload.barcode = await generateUniqueBarcode();
-
   const product = await Product.create(payload);
   return product;
 };
@@ -122,10 +120,6 @@ const updateProduct = async (
   const product = await Product.findById(productId);
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product not found");
-  }
-
-  if (!product.barcode) {
-    product.barcode = await generateUniqueBarcode();
   }
 
   // your code override the totalAddedStock
