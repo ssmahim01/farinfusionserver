@@ -64,7 +64,13 @@ export interface IOrder {
   isPublished?: boolean;
   returnCount?: number;
   totalReturnedQuantity?: number;
-
+  confirmedAt?: Date;
+  courierAssignedAt?: Date;
+  pickedUpAt?: Date;
+  holdAt?: Date;
+  deliveredAt?: Date;
+  partialDeliveredAt?: Date;
+  cancelledAt?: Date;
   orderType: OrderType;
   exchangeHistory?: any[];
   damageProducts?: any[];

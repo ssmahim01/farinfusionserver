@@ -53,6 +53,40 @@ const orderSchema = new Schema<IOrder>(
         required: false,
       },
     },
+    confirmedAt: {
+      type: Date,
+      default: null,
+    },
+
+    courierAssignedAt: {
+      type: Date,
+      default: null,
+    },
+
+    pickedUpAt: {
+      type: Date,
+      default: null,
+    },
+
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
+
+    partialDeliveredAt: {
+      type: Date,
+      default: null,
+    },
+
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+
+    holdAt: {
+      type: Date,
+      default: null,
+    },
 
     products: [
       {

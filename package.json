@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only ./src/server.ts",
+    "migrate:deliveredAt": "ts-node-dev --transpile-only src/scripts/migrateDeliveredAt.ts",
     "lint": "npx eslint ./src",
     "clear:db": "ts-node-dev src/scripts/clearDB.ts",
     "build": "tsc",

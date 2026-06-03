@@ -228,6 +228,9 @@ const createCourier = async (orderId: string) => {
     order.courierName = CourierName.PAPERFLY;
     order.trackingNumber = success?.tracking_number;
     order.deliveryStatus = DeliveryStatus.COURIERASSIGNED;
+    if (!order.courierAssignedAt) {
+      order.courierAssignedAt = new Date();
+    }
 
     await order.save();
 

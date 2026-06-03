@@ -251,6 +251,9 @@ const createCourier = async (orderId: string) => {
     order.courierName = "STEADFAST";
     order.trackingNumber = consignment?.tracking_code;
     order.deliveryStatus = DeliveryStatus.COURIERASSIGNED;
+    if (!order.courierAssignedAt) {
+      order.courierAssignedAt = new Date();
+    }
 
     await order.save();
 

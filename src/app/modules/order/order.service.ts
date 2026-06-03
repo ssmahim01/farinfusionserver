@@ -431,11 +431,17 @@ const updateManualDeliveryStatus = async (
     ) {
       order.deliveryStatus = DeliveryStatus.DELIVERED;
       order.orderStatus = OrderStatus.COMPLETED;
+      if (!order.deliveredAt) {
+        order.deliveredAt = new Date();
+      }
     }
 
     if (deliveryStatus === DeliveryStatus.HOLD) {
       order.deliveryStatus = DeliveryStatus.HOLD;
       order.orderStatus = OrderStatus.CONFIRMED;
+      if (!order.holdAt) {
+        order.holdAt = new Date();
+      }
     }
 
     if (deliveryStatus === DeliveryStatus.IN_TRANSIT) {
@@ -469,6 +475,9 @@ const updateManualDeliveryStatus = async (
 
       order.deliveryStatus = DeliveryStatus.CANCELLED;
       order.orderStatus = OrderStatus.CANCELLED;
+      if (!order.cancelledAt) {
+        order.cancelledAt = new Date();
+      }
     }
 
     await order.save({ session });
@@ -642,6 +651,15 @@ const updateOrderStatus = async (
 
   if (status === OrderStatus.CONFIRMED) {
     updateData.confirmedBy = user.userId;
+    if (!existingOrder.confirmedAt) {
+      updateData.confirmedAt = new Date();
+    }
+  }
+
+  if (status === OrderStatus.COMPLETED) {
+    updateData.deliveryStatus = DeliveryStatus.DELIVERED;
+
+    updateData.deliveredAt = new Date();
   }
 
   const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData, {
@@ -723,7 +741,7 @@ const exchangeOrderItem = async ({
       quantity: qty,
       priceDiff,
       note,
-      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     order.total += priceDiff;
@@ -766,7 +784,7 @@ const markOrderDamage = async ({ orderId, itemIndex, quantity, note }: any) => {
       product: item.product,
       quantity,
       note,
-      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // DAMAGE = LOSS (no stock return)
@@ -916,15 +934,31 @@ const getAllOrders = async (query: Record<string, string>) => {
   const queryObj: any = {};
 
   // DATE FILTER
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
 
-    if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+  const dateFieldMap: Record<string, string> = {
+    updatedAt: "updatedAt",
+    confirmed: "confirmedAt",
+    courierAssigned: "courierAssignedAt",
+    pickedUp: "pickedUpAt",
+    delivered: "deliveredAt",
+    partial: "partialDeliveredAt",
+    cancelled: "cancelledAt",
+    hold: "holdAt",
+  };
+
+  const dateType = query.dateType || "created";
+
+  const dateField = dateFieldMap[dateType] || "updatedAt";
+
+  if (query["updatedAt[gte]"] || query["updatedAt[lte]"]) {
+    queryObj[dateField] = {};
+
+    if (query["updatedAt[gte]"]) {
+      queryObj[dateField].$gte = new Date(query["updatedAt[gte]"]);
     }
 
-    if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    if (query["updatedAt[lte]"]) {
+      queryObj[dateField].$lte = new Date(query["updatedAt[lte]"]);
     }
   }
 
@@ -933,9 +967,14 @@ const getAllOrders = async (query: Record<string, string>) => {
     queryObj.orderStatus = query.orderStatus;
   }
 
+  if (query.deliveryStatus) {
+    queryObj.deliveryStatus = query.deliveryStatus;
+  }
+
   // REMOVE SPECIAL FIELDS
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  delete query["updatedAt[gte]"];
+  delete query["updatedAt[lte]"];
+  delete query.dateType;
 
   const queryBuilder = new QueryBuilder(
     Order.find({
@@ -1129,15 +1168,15 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
   const queryObj: any = {};
 
   // DATE FILTER
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
+  if (query["updatedAt[gte]"] || query["updatedAt[lte]"]) {
+    queryObj.updatedAt = {};
 
-    if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    if (query["updatedAt[gte]"]) {
+      queryObj.updatedAt.$gte = new Date(query["updatedAt[gte]"]);
     }
 
-    if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    if (query["updatedAt[lte]"]) {
+      queryObj.updatedAt.$lte = new Date(query["updatedAt[lte]"]);
     }
   }
 
@@ -1145,8 +1184,8 @@ const getMyOrders = async (userId: string, query: Record<string, string>) => {
     queryObj.orderStatus = query.orderStatus;
   }
 
-  delete query["createdAt[gte]"];
-  delete query["createdAt[lte]"];
+  delete query["updatedAt[gte]"];
+  delete query["updatedAt[lte]"];
 
   const user = await User.findById(userId).select("role email");
   if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");

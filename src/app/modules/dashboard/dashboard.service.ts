@@ -14,15 +14,15 @@ const getDashboardOverview = async (
 ) => {
   const queryObj: any = {};
 
-  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
-    queryObj.createdAt = {};
+  if (query["updatedAt[gte]"] || query["updatedAt[lte]"]) {
+    queryObj.updatedAt = {};
 
-    if (query["createdAt[gte]"]) {
-      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    if (query["updatedAt[gte]"]) {
+      queryObj.updatedAt.$gte = new Date(query["updatedAt[gte]"]);
     }
 
-    if (query["createdAt[lte]"]) {
-      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    if (query["updatedAt[lte]"]) {
+      queryObj.updatedAt.$lte = new Date(query["updatedAt[lte]"]);
     }
   }
 
@@ -148,12 +148,12 @@ const getDashboardOverview = async (
       },
     },
   ]);
-  const startDate = query["createdAt[gte]"]
-    ? new Date(query["createdAt[gte]"])
+  const startDate = query["updatedAt[gte]"]
+    ? new Date(query["updatedAt[gte]"])
     : new Date(new Date().setDate(1));
 
-  const endDate = query["createdAt[lte]"]
-    ? new Date(query["createdAt[lte]"])
+  const endDate = query["updatedAt[lte]"]
+    ? new Date(query["updatedAt[lte]"])
     : new Date();
 
   const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
@@ -183,9 +183,9 @@ const getDashboardOverview = async (
 
   let days = totalDaysInMonth;
 
-  if (query["createdAt[gte]"] && query["createdAt[lte]"]) {
-    const start = new Date(query["createdAt[gte]"]);
-    const end = new Date(query["createdAt[lte]"]);
+  if (query["updatedAt[gte]"] && query["updatedAt[lte]"]) {
+    const start = new Date(query["updatedAt[gte]"]);
+    const end = new Date(query["updatedAt[lte]"]);
 
     days =
       Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;

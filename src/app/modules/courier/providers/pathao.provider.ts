@@ -235,6 +235,9 @@ const createCourier = async (orderId: any) => {
       consignmentId?.toString() ||
       "";
     order.deliveryStatus = responseData?.deliveryStatus;
+    if (!order.courierAssignedAt) {
+      order.courierAssignedAt = new Date();
+    }
 
     await order.save();
 

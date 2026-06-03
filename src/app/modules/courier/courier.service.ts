@@ -273,18 +273,32 @@ export const syncCourierOrderStatus = async (
   switch (mappedStatus) {
     case CourierDeliveryStatus.DELIVERED:
       orderUpdate.orderStatus = OrderStatus.COMPLETED;
+      orderUpdate.deliveredAt = new Date();
       break;
 
     case CourierDeliveryStatus.PARTIAL:
       orderUpdate.orderStatus = OrderStatus.PARTIAL;
+      orderUpdate.partialDeliveredAt = new Date();
       break;
 
     case CourierDeliveryStatus.CANCELLED:
       orderUpdate.orderStatus = OrderStatus.CANCELLED;
+      orderUpdate.cancelledAt = new Date();
+      break;
+
+    case CourierDeliveryStatus.HOLD:
+      orderUpdate.holdAt = new Date();
+
+      break;
+
+    case CourierDeliveryStatus.PICKED_UP:
+      orderUpdate.pickedUpAt = new Date();
+
       break;
 
     default:
       orderUpdate.orderStatus = OrderStatus.CONFIRMED;
+      orderUpdate.confirmedAt = new Date();
   }
 
   await Order.findByIdAndUpdate(courier.order, {
