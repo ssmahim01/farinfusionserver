@@ -224,9 +224,9 @@ const getSingleProduct = async (slug: string) => {
   return {
     data: {
       ...plain,
-      totalSold,
+      totalSold: plain.totalSold || 0,
       totalRevenue,
-      availableStock,
+      availableStock: plain.availableStock || 0,
     },
   };
 };
@@ -437,8 +437,8 @@ const getAllProducts = async (query: Record<string, string>) => {
 
     return {
       ...plain,
-      totalSold,
-      availableStock,
+      totalSold: plain.totalSold || 0,
+      availableStock: plain.availableStock || 0,
       totalRevenue: sale?.totalRevenue || 0,
     };
   });

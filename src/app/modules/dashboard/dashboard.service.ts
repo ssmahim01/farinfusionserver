@@ -30,6 +30,10 @@ const getDashboardOverview = async (
     queryObj.orderStatus = query.orderStatus;
   }
 
+  if (query.deliveryStatus) {
+    queryObj.deliveryStatus = query.deliveryStatus;
+  }
+
   let matchCondition: any = {
     isDeleted: false,
     isPublished: true,
@@ -118,13 +122,18 @@ const getDashboardOverview = async (
     },
   ]);
 
+  const courierAssignedCount = await Order.countDocuments({
+    ...matchCondition,
+    deliveryStatus: "COURIERASSIGNED",
+  });
+
   const orderStats = {
     PENDING: 0,
     CONFIRMED: 0,
     COMPLETED: 0,
     CANCELLED: 0,
     PARTIAL: 0,
-     COURIER_ASSIGNED: 0,
+    COURIER_ASSIGNED: courierAssignedCount,
   };
 
   orderStatsAgg.forEach((item) => {

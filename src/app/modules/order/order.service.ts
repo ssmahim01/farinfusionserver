@@ -377,21 +377,40 @@ const markOrderNoResponse = async (orderId: string) => {
     }
 
     if (!(existingOrder as any).isRestocked) {
-      for (const item of existingOrder.products) {
-        await Product.findByIdAndUpdate(
-          item.product,
-          {
-            $inc: {
-              availableStock: item.quantity,
-              totalSold: -item.quantity,
-            },
-          },
-          { session },
-        );
-      }
+  for (const item of existingOrder.products) {
+    const before = await Product.findById(item.product).session(session);
 
-      (existingOrder as any).isRestocked = true;
-    }
+    // console.log("========== BEFORE ==========");
+    // console.log({
+    //   product: before?.title,
+    //   availableStock: before?.availableStock,
+    //   totalSold: before?.totalSold,
+    // });
+
+    const updated = await Product.findByIdAndUpdate(
+      item.product,
+      {
+        $inc: {
+          availableStock: item.quantity,
+          totalSold: -item.quantity,
+        },
+      },
+      {
+        session,
+        returnDocument: "after",
+      },
+    );
+
+    // console.log("========== AFTER ==========");
+    // console.log({
+    //   product: updated?.title,
+    //   availableStock: updated?.availableStock,
+    //   totalSold: updated?.totalSold,
+    // });
+  }
+
+  existingOrder.isRestocked = true;
+}
 
     existingOrder.orderStatus = OrderStatus.NO_RESPONSE;
     existingOrder.deliveryStatus = DeliveryStatus.NOT_SHIPPED;
