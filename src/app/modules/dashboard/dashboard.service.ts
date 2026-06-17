@@ -133,7 +133,7 @@ const getDashboardOverview = async (
     COMPLETED: 0,
     CANCELLED: 0,
     PARTIAL: 0,
-    COURIER_ASSIGNED: courierAssignedCount,
+    COURIER_ASSIGNED: courierAssignedCount || 0,
     NO_RESPONSE: 0
   };
 
