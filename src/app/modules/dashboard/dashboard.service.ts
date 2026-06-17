@@ -134,6 +134,7 @@ const getDashboardOverview = async (
     CANCELLED: 0,
     PARTIAL: 0,
     COURIER_ASSIGNED: courierAssignedCount,
+    NO_RESPONSE: 0
   };
 
   orderStatsAgg.forEach((item) => {
