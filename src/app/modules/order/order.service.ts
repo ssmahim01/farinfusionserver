@@ -356,6 +356,64 @@ const getSingleOrder = async (id: string) => {
   return { data: order };
 };
 
+const markOrderNoResponse = async (orderId: string) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const existingOrder = await Order.findById(orderId).session(session);
+
+    if (!existingOrder) {
+      throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+    }
+
+    // Already marked
+    if (existingOrder.orderStatus === OrderStatus.NO_RESPONSE) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Order already marked as no response",
+      );
+    }
+
+    if (!(existingOrder as any).isRestocked) {
+      for (const item of existingOrder.products) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              availableStock: item.quantity,
+              totalSold: -item.quantity,
+            },
+          },
+          { session },
+        );
+      }
+
+      (existingOrder as any).isRestocked = true;
+    }
+
+    existingOrder.orderStatus = OrderStatus.NO_RESPONSE;
+    existingOrder.deliveryStatus = DeliveryStatus.NOT_SHIPPED;
+    existingOrder.noResponseAt = new Date();
+
+    await existingOrder.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return await Order.findById(orderId)
+      .populate("customer", "name email _id role phone")
+      .populate("seller", "name email _id role phone")
+      .populate("payment")
+      .populate("products.product");
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 const updateManualDeliveryStatus = async (
   orderId: string,
   deliveryStatus: DeliveryStatus,
@@ -944,6 +1002,7 @@ const getAllOrders = async (query: Record<string, string>) => {
     partial: "partialDeliveredAt",
     cancelled: "cancelledAt",
     hold: "holdAt",
+    noResponse: "noResponseAt",
   };
 
   const dateType = query.dateType || "created";
@@ -1007,6 +1066,7 @@ const getAllOrders = async (query: Record<string, string>) => {
     CONFIRMED: 0,
     COMPLETED: 0,
     CANCELLED: 0,
+    NO_RESPONSE: 0,
   };
 
   stats.forEach((item) => {
@@ -1086,6 +1146,7 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
     CONFIRMED: 0,
     COMPLETED: 0,
     CANCELLED: 0,
+    NO_RESPONSE: 0,
   };
 
   stats.forEach((item) => {
@@ -1326,6 +1387,7 @@ const getAllHoldOrders = async (query: Record<string, string>) => {
     CONFIRMED: 0,
     COMPLETED: 0,
     CANCELLED: 0,
+    NO_RESPONSE: 0,
   };
 
   stats.forEach((item) => {
@@ -1382,6 +1444,54 @@ const getMyHoldOrders = async (
   return { data, meta };
 };
 
+const getAllNoResponseOrders = async (query: Record<string, string>) => {
+  await publishScheduledOrders();
+
+  const queryObj: any = {
+    orderStatus: OrderStatus.NO_RESPONSE,
+  };
+
+  if (query["createdAt[gte]"] || query["createdAt[lte]"]) {
+    queryObj.createdAt = {};
+
+    if (query["createdAt[gte]"]) {
+      queryObj.createdAt.$gte = new Date(query["createdAt[gte]"]);
+    }
+
+    if (query["createdAt[lte]"]) {
+      queryObj.createdAt.$lte = new Date(query["createdAt[lte]"]);
+    }
+  }
+
+  delete query.orderStatus;
+
+  const queryBuilder = new QueryBuilder(
+    Order.find({
+      isDeleted: false,
+      isPublished: true,
+      ...queryObj,
+    }),
+    query,
+  );
+
+  const data = await queryBuilder
+    .search(orderSearchableFields)
+    .filter()
+    .sort()
+    .fields()
+    .paginate()
+    .build()
+    .populate("customer", "name email _id role phone")
+    .populate("seller", "name email _id role phone")
+    .populate("payment")
+    .populate("products.product")
+    .populate("confirmedBy", "name email _id role phone");
+
+  const meta = await queryBuilder.getMeta();
+
+  return { data, meta };
+};
+
 const getAllDamagedProducts = async () => {
   const orders = await Order.find({ isDeleted: false, isPublished: true })
     .populate("products.product")
@@ -1416,10 +1526,12 @@ export const OrderServices = {
   getSingleOrder,
   getAllOrders,
   getAllTrashOrders,
+  getAllNoResponseOrders,
   updateOrder,
   checkCustomerOrder,
   updateOrderStatus,
   assignSeller,
+  markOrderNoResponse,
   deleteOrder,
   getAllScheduledOrders,
   getAllDamagedProducts,

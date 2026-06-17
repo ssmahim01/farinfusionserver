@@ -15,6 +15,7 @@ export enum OrderStatus {
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
   DAMAGE = "DAMAGE",
+  NO_RESPONSE = "NO_RESPONSE",
 }
 
 export enum DeliveryStatus {
@@ -71,6 +72,7 @@ export interface IOrder {
   deliveredAt?: Date;
   partialDeliveredAt?: Date;
   cancelledAt?: Date;
+  noResponseAt?: Date;
   orderType: OrderType;
   exchangeHistory?: any[];
   damageProducts?: any[];

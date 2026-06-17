@@ -60,6 +60,12 @@ router.get(
 );
 
 router.get(
+  "/no-response",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.getAllNoResponseOrders,
+);
+
+router.get(
   "/my-scheduled-orders",
   checkAuth(...Object.values(Role)),
   OrderControllers.getMyScheduledOrders,
@@ -84,6 +90,12 @@ router.get(
 );
 
 router.patch("/:id", OrderControllers.updateOrder);
+
+router.patch(
+  "/:id/no-response",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
+  OrderControllers.markNoResponse,
+);
 
 router.patch(
   "/manual-delivery-status/:id",

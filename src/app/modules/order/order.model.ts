@@ -83,6 +83,11 @@ const orderSchema = new Schema<IOrder>(
       default: null,
     },
 
+    noResponseAt: {
+      type: Date,
+      default: null,
+    },
+
     holdAt: {
       type: Date,
       default: null,

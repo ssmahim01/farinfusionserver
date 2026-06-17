@@ -124,6 +124,7 @@ const getDashboardOverview = async (
     COMPLETED: 0,
     CANCELLED: 0,
     PARTIAL: 0,
+     COURIER_ASSIGNED: 0,
   };
 
   orderStatsAgg.forEach((item) => {
