@@ -387,7 +387,7 @@ const markOrderNoResponse = async (orderId: string) => {
     //   totalSold: before?.totalSold,
     // });
 
-    const updated = await Product.findByIdAndUpdate(
+    await Product.findByIdAndUpdate(
       item.product,
       {
         $inc: {
