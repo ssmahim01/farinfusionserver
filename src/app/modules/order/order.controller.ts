@@ -212,6 +212,21 @@ const updateCompleteOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const restoreNoResponseOrder = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await OrderServices.restoreNoResponseOrder(
+      req.params.id as string,
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Order restored successfully",
+      data: result,
+    });
+  },
+);
+
 const markNoResponse = catchAsync(async (req, res) => {
   const result = await OrderServices.markOrderNoResponse(
     req.params.id as string,
@@ -449,6 +464,7 @@ export const OrderControllers = {
   updateOrderStatus,
   partialUpdateOrder,
   markNoResponse,
+  restoreNoResponseOrder,
   getMyHoldOrders,
   getAllHoldOrders,
 };

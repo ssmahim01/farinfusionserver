@@ -7,6 +7,7 @@ export enum OrderType {
 
 export enum OrderStatus {
   PENDING = "PENDING",
+  RESPONDED = "RESPONDED",
   COMPLETED = "COMPLETED",
   CONFIRMED = "CONFIRMED",
   PARTIAL = "PARTIAL",
@@ -72,7 +73,7 @@ export interface IOrder {
   deliveredAt?: Date;
   partialDeliveredAt?: Date;
   cancelledAt?: Date;
-  noResponseAt?: Date;
+  noResponseAt?: Date | null;
   orderType: OrderType;
   exchangeHistory?: any[];
   damageProducts?: any[];

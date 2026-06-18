@@ -98,6 +98,12 @@ router.patch(
 );
 
 router.patch(
+  "/:id/restore-no-response",
+  checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
+  OrderControllers.restoreNoResponseOrder,
+);
+
+router.patch(
   "/manual-delivery-status/:id",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.TELLICELSS),
   OrderControllers.updateManualDeliveryStatus,

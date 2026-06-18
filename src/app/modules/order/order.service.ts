@@ -356,6 +356,68 @@ const getSingleOrder = async (id: string) => {
   return { data: order };
 };
 
+const restoreNoResponseOrder = async (orderId: string) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const existingOrder = await Order.findById(orderId).session(session);
+
+    if (!existingOrder) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        "Order not found",
+      );
+    }
+
+    if (existingOrder.orderStatus !== OrderStatus.NO_RESPONSE) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Only no response orders can be restored",
+      );
+    }
+
+    // Stock deduct again
+    if ((existingOrder as any).isRestocked) {
+      for (const item of existingOrder.products) {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              availableStock: -item.quantity,
+              totalSold: item.quantity,
+            },
+          },
+          { session },
+        );
+      }
+
+      (existingOrder as any).isRestocked = false;
+    }
+
+    // Restore order
+    existingOrder.orderStatus = OrderStatus.PENDING;
+    existingOrder.noResponseAt = null;
+
+    await existingOrder.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return await Order.findById(orderId)
+      .populate("customer", "name email _id role phone")
+      .populate("seller", "name email _id role phone")
+      .populate("payment")
+      .populate("products.product");
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 const markOrderNoResponse = async (orderId: string) => {
   const session = await mongoose.startSession();
 
@@ -1559,6 +1621,7 @@ export const OrderServices = {
   updateManualDeliveryStatus,
   getMyScheduledOrders,
   getMyOrders,
+  restoreNoResponseOrder,
   updateOrderCancelStatus,
   getAllHoldOrders,
   getMyHoldOrders,
