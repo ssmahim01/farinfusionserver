@@ -126,6 +126,10 @@ const productSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    isBestSelling: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

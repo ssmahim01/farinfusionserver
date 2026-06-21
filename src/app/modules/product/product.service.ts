@@ -327,6 +327,10 @@ const getAllProducts = async (query: Record<string, string>) => {
     };
   }
 
+  if (query.isBestSelling === "true") {
+    productQuery.isBestSelling = true;
+  }
+
   // SAVE SORT VALUE
   const sortValue = query.sort;
 

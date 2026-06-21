@@ -11,7 +11,7 @@ export interface IProduct {
   totalReturned: number;
   barcode?: string;
   restockCount: number;
-
+  isBestSelling?: boolean;
   // Basic Info
   title: string; // e.g., "Aveeno Baby Sunscreen"
   brand: Types.ObjectId; // Reference to Brand collection

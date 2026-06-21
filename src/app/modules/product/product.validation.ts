@@ -31,7 +31,7 @@ export const createProductZodSchema = z.object({
   brand: z
     .string({ invalid_type_error: "Brand must be a string (ObjectId)" })
     .min(1, { message: "Brand is required" }),
-
+isBestSelling: z.boolean().optional(),
   category: z
     .string({ invalid_type_error: "Category must be a string (ObjectId)" })
     .min(1, { message: "Category is required" }),
