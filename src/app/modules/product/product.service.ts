@@ -63,9 +63,6 @@ const createProductService = async (
   user: JwtPayload,
 ) => {
   const isProductExist = await Product.findOne({ title: payload.title });
-  if (isProductExist) {
-    throw new AppError(httpStatus.CONFLICT, "Product already exists");
-  }
 
   const availableStock = payload.availableStock ?? 0;
 
