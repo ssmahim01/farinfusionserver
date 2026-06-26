@@ -15,6 +15,7 @@ import { ProductPurchaseRoutes } from "../modules/purchase/productPurchase.route
 import { returnRoutes } from "../modules/return/return.route";
 import { courierSettingsRoutes } from "../modules/courierSettings/courierSettings.route";
 import { reviewRoutes } from "../modules/review/review.route";
+import { ProductVerificationRoutes } from "../modules/productVerification/productVerification.route";
 
 export const router = Router();
 
@@ -30,6 +31,10 @@ const moduleRoutes = [
   {
     path: "/category",
     route: categoryRoutes,
+  },
+  {
+    path: "/product-verifications",
+    route: ProductVerificationRoutes,
   },
   {
     path: "/brand",
