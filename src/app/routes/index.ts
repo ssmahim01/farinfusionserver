@@ -16,6 +16,7 @@ import { returnRoutes } from "../modules/return/return.route";
 import { courierSettingsRoutes } from "../modules/courierSettings/courierSettings.route";
 import { reviewRoutes } from "../modules/review/review.route";
 import { ProductVerificationRoutes } from "../modules/productVerification/productVerification.route";
+import { ProductBlogRoutes } from "../modules/productBlog/productBlog.route";
 
 export const router = Router();
 
@@ -35,6 +36,10 @@ const moduleRoutes = [
   {
     path: "/product-verifications",
     route: ProductVerificationRoutes,
+  },
+  {
+    path: "/product-blog",
+    route: ProductBlogRoutes,
   },
   {
     path: "/brand",
