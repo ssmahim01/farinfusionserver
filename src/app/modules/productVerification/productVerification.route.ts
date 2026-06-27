@@ -18,6 +18,10 @@ router.post(
 );
 
 router.get("/", ProductVerificationControllers.getAllProductVerifications);
+router.patch(
+  "/:id/view",
+  ProductVerificationControllers.increaseView,
+);
 
 router.get(
   "/:idOrSlug",

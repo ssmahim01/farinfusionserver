@@ -30,6 +30,19 @@ const getAllProductVerifications = catchAsync(async (req, res) => {
   });
 });
 
+const increaseView = catchAsync(async (req, res) => {
+  const result = await ProductVerificationServices.increaseView(
+    req.params.id as string,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "View updated successfully",
+    data: result,
+  });
+});
+
 const getSingleProductVerification = catchAsync(async (req, res) => {
   const result = await ProductVerificationServices.getSingleProductVerification(
     req.params.idOrSlug as string,
@@ -74,6 +87,7 @@ export const ProductVerificationControllers = {
   createProductVerification,
   getAllProductVerifications,
   getSingleProductVerification,
+  increaseView,
   updateProductVerification,
   deleteProductVerification,
 };

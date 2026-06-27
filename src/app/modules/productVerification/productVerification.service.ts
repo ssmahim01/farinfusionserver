@@ -28,6 +28,33 @@ const createProductVerification = async (payload: IProductVerification) => {
   return await ProductVerification.create(payload);
 };
 
+const increaseView = async (id: string) => {
+  const result = await ProductVerification.findOneAndUpdate(
+    {
+      _id: id,
+      isDeleted: false,
+      status: "PUBLISHED",
+    },
+    {
+      $inc: {
+        views: 1,
+      },
+    },
+    {
+      new: true,
+      projection: {
+        views: 1,
+      },
+    },
+  );
+
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, "Content not found");
+  }
+
+  return result;
+};
+
 const getAllProductVerifications = async (query: Record<string, any>) => {
   const filterQuery: Record<string, any> = {
     isDeleted: false,
@@ -148,20 +175,6 @@ const deleteProductVerification = async (id: string) => {
     id,
     {
       isDeleted: true,
-    },
-    {
-      new: true,
-    },
-  );
-};
-
-const increaseView = async (id: string) => {
-  return await ProductVerification.findByIdAndUpdate(
-    id,
-    {
-      $inc: {
-        views: 1,
-      },
     },
     {
       new: true,
