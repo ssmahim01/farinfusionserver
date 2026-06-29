@@ -17,6 +17,7 @@ const createReview = async (payload: Partial<IReview>, user: JwtPayload) => {
 
   const review = await Review.create({
     ...payload,
+    status: payload.status || ReviewStatus.APPROVED,
     createdBy: user.userId,
   });
 

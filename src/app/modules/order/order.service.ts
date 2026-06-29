@@ -218,12 +218,12 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       });
     }
 
-    if (
-      payload.advanceDetails?.amount &&
-      payload.advanceDetails.amount > orderDoc.total
-    ) {
-      throw new AppError(400, "Advance amount cannot exceed payable total");
-    }
+    // if (
+    //   payload.advanceDetails?.amount &&
+    //   payload.advanceDetails.amount > orderDoc.total
+    // ) {
+    //   throw new AppError(400, "Advance amount cannot exceed payable total");
+    // }
 
     if (orderDoc.advanceDetails?.option && orderDoc.advanceDetails?.amount) {
       orderDoc.total = orderDoc.total;
