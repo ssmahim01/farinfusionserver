@@ -12,7 +12,7 @@ const router = express.Router();
 router.post(
   "/create-lead",
   checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
-  validateRequest(createLeadZodSchema),
+  // validateRequest(createLeadZodSchema),
   LeadControllers.createLead,
 );
 
@@ -40,7 +40,7 @@ router.delete(
 );
 router.patch(
   "/:id",
-  validateRequest(updateLeadZodSchema),
+  // validateRequest(updateLeadZodSchema),
   checkAuth(Role.ADMIN, Role.MANAGER, Role.MODERATOR, Role.TELLICELSS),
   LeadControllers.updateLead,
 );
