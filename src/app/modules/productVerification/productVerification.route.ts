@@ -11,9 +11,9 @@ const router = express.Router();
 router.post(
   "/",
   checkAuth(Role.ADMIN, Role.MODERATOR),
-  validateRequest(
-    ProductVerificationValidation.createProductVerificationValidationSchema,
-  ),
+  // validateRequest(
+  //   ProductVerificationValidation.createProductVerificationValidationSchema,
+  // ),
   ProductVerificationControllers.createProductVerification,
 );
 

@@ -15,17 +15,17 @@ const createProductBlogValidationSchema = z.object({
     shortDescription: z
       .string()
       .trim()
-      .min(20)
+      .min(5)
       .max(500),
 
     content: z
       .string()
       .trim()
-      .min(30),
+      .min(10),
 
     thumbnail: z
       .string()
-      .url(),
+      .url().optional(),
 
     category: z.enum(
       Object.values(ProductBlogCategory) as [

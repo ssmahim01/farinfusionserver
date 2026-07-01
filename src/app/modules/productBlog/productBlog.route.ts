@@ -13,7 +13,7 @@ const router = express.Router();
 router.post(
   "/",
   checkAuth(Role.ADMIN, Role.MODERATOR),
-  validateRequest(ProductBlogValidation.createProductBlogValidationSchema),
+  // validateRequest(ProductBlogValidation.createProductBlogValidationSchema),
   ProductBlogControllers.createProductBlog,
 );
 
