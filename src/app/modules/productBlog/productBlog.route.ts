@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post(
   "/",
-  checkAuth(Role.ADMIN, Role.MODERATOR),
+  checkAuth(...Object.values(Role)),
   // validateRequest(ProductBlogValidation.createProductBlogValidationSchema),
   ProductBlogControllers.createProductBlog,
 );
@@ -25,14 +25,14 @@ router.patch("/:id/view", ProductBlogControllers.increaseView);
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MODERATOR),
+ checkAuth(...Object.values(Role)),
 
   ProductBlogControllers.updateProductBlog,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN),
+ checkAuth(...Object.values(Role)),
   ProductBlogControllers.deleteProductBlog,
 );
 

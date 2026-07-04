@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post(
   "/",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+ checkAuth(...Object.values(Role)),
   validateRequest(createReviewZodSchema),
   ReviewControllers.createReview,
 );
@@ -22,7 +22,7 @@ router.get("/", ReviewControllers.getAllReviews);
 
 router.get(
   "/stats",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+ checkAuth(...Object.values(Role)),
   ReviewControllers.getReviewStats,
 );
 
@@ -32,26 +32,26 @@ router.get("/:id", ReviewControllers.getSingleReview);
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   validateRequest(updateReviewZodSchema),
   ReviewControllers.updateReview,
 );
 
 router.patch(
   "/:id/approve",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   ReviewControllers.approveReview,
 );
 
 router.patch(
   "/:id/reject",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   ReviewControllers.rejectReview,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   ReviewControllers.deleteReview,
 );
 

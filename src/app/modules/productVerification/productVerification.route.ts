@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.post(
   "/",
-  checkAuth(Role.ADMIN, Role.MODERATOR),
+checkAuth(...Object.values(Role)),
   // validateRequest(
   //   ProductVerificationValidation.createProductVerificationValidationSchema,
   // ),
@@ -30,14 +30,14 @@ router.get(
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MODERATOR),
+ checkAuth(...Object.values(Role)),
  
   ProductVerificationControllers.updateProductVerification,
 );
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN),
+ checkAuth(...Object.values(Role)),
   ProductVerificationControllers.deleteProductVerification,
 );
 

@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post(
   "/create",
-  checkAuth(Role.ADMIN),
+ checkAuth(...Object.values(Role)),
   //   validateRequest(
   //     ProductPurchaseValidation.createProductPurchaseValidationSchema,
   //   ),
@@ -18,31 +18,31 @@ router.post(
 
 router.get(
   "/",
-  checkAuth(Role.ADMIN),
+  checkAuth(...Object.values(Role)),
   ProductPurchaseControllers.getAllPurchases,
 );
 
 router.get(
   "/:id",
-  checkAuth(Role.ADMIN),
+  checkAuth(...Object.values(Role)),
   ProductPurchaseControllers.getSinglePurchase,
 );
 
 router.get(
   "/stats/overview",
-  checkAuth(Role.ADMIN),
+  checkAuth(...Object.values(Role)),
   ProductPurchaseControllers.getPurchaseStats,
 );
 
 router.patch(
   "/status/:id",
-  checkAuth(Role.ADMIN),
+  checkAuth(...Object.values(Role)),
   ProductPurchaseControllers.updatePurchaseStatus,
 );
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN),
+ checkAuth(...Object.values(Role)),
   //   validateRequest(
   //     ProductPurchaseValidation.updateProductPurchaseValidationSchema,
   //   ),
@@ -51,7 +51,7 @@ router.patch(
 
 router.delete(
   "/:id",
-  checkAuth(Role.ADMIN),
+  checkAuth(...Object.values(Role)),
   ProductPurchaseControllers.deletePurchase,
 );
 
