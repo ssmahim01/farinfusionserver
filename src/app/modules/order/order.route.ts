@@ -7,13 +7,13 @@ const router = express.Router();
 
 router.post(
   "/",
-  checkAuth(
-    Role.CUSTOMER,
-    Role.MODERATOR,
-    Role.MANAGER,
-    Role.ADMIN,
-    Role.TELLICELSS,
-  ),
+  // checkAuth(
+  //   Role.CUSTOMER,
+  //   Role.MODERATOR,
+  //   Role.MANAGER,
+  //   Role.ADMIN,
+  //   Role.TELLICELSS,
+  // ),
   OrderControllers.createOrder,
 );
 

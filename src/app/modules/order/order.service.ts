@@ -39,7 +39,7 @@ interface TCreateOrderPayload {
 
   billingDetails: {
     fullName?: string;
-    email: string;
+    email?: string;
     phone?: string;
     address?: string;
   };
@@ -229,13 +229,16 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderDoc.total = orderDoc.total;
     }
 
-    const isUserExist = await User.findOne({
-      email: payload?.billingDetails?.email,
-    }).session(session);
+   // Link customer only if a valid email exists
+if (payload?.billingDetails?.email) {
+  const isUserExist = await User.findOne({
+    email: payload.billingDetails.email,
+  }).session(session);
 
-    if (isUserExist) {
-      orderDoc.customer = isUserExist?._id;
-    }
+  if (isUserExist) {
+    orderDoc.customer = isUserExist._id;
+  }
+}
 
     if (payload.billingDetails) {
       orderDoc.billingDetails = payload.billingDetails;

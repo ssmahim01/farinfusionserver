@@ -54,7 +54,7 @@ export interface IOrderProduct {
 export interface IBillingDetails {
   fullName: string;
   phone: string;
-  email: string;
+  email?: string;
   address: string;
 }
 
