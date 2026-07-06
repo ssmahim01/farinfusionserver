@@ -43,6 +43,7 @@ export interface IProductVerification {
 
   views: number;
 
+  product: Types.ObjectId;
   createdBy?: Types.ObjectId;
 
   isDeleted: boolean;

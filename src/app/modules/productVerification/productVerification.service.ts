@@ -87,7 +87,7 @@ const getAllProductVerifications = async (query: Record<string, any>) => {
     .fields()
     .paginate()
     .build()
-    .populate("createdBy", "name email");
+    .populate("createdBy", "name email").populate("product", "title slug images");
 
   const meta = await queryBuilder.getMeta();
 
@@ -118,7 +118,7 @@ const getSingleProductVerification = async (idOrSlug: string) => {
     {
       new: true,
     },
-  ).populate("createdBy", "name email");
+  ).populate("createdBy", "name email").populate("product", "title slug images");
 
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, "Content not found");

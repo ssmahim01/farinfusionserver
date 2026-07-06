@@ -248,27 +248,33 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderDoc.seller = payload.seller;
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Prevent duplicate POS orders from the same customer on the same day.
+    // Public website (ONLINE) orders are allowed multiple times.
 
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    if (payload.orderType === OrderType.POS) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
 
-    const existingOrderToday = await Order.findOne({
-      "billingDetails.phone": payload.billingDetails.phone,
-      createdAt: {
-        $gte: todayStart,
-        $lte: todayEnd,
-      },
-      isDeleted: false,
-      isPublished: true,
-    }).session(session);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
 
-    if (existingOrderToday) {
-      throw new AppError(
-        400,
-        "This customer already placed an order today. Try again after 12 AM.",
-      );
+      const existingOrderToday = await Order.findOne({
+        orderType: OrderType.POS,
+        "billingDetails.phone": payload.billingDetails.phone,
+        createdAt: {
+          $gte: todayStart,
+          $lte: todayEnd,
+        },
+        isDeleted: false,
+        isPublished: true,
+      }).session(session);
+
+      if (existingOrderToday) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "This customer already has a POS order today. Please try again after 12:00 AM.",
+        );
+      }
     }
 
     const order = new Order(orderDoc);
@@ -365,10 +371,7 @@ const restoreNoResponseOrder = async (orderId: string) => {
     const existingOrder = await Order.findById(orderId).session(session);
 
     if (!existingOrder) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        "Order not found",
-      );
+      throw new AppError(httpStatus.NOT_FOUND, "Order not found");
     }
 
     if (existingOrder.orderStatus !== OrderStatus.NO_RESPONSE) {
@@ -410,7 +413,6 @@ const restoreNoResponseOrder = async (orderId: string) => {
       .populate("seller", "name email _id role phone")
       .populate("payment")
       .populate("products.product");
-
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -439,40 +441,40 @@ const markOrderNoResponse = async (orderId: string) => {
     }
 
     if (!(existingOrder as any).isRestocked) {
-  for (const item of existingOrder.products) {
-    const before = await Product.findById(item.product).session(session);
+      for (const item of existingOrder.products) {
+        const before = await Product.findById(item.product).session(session);
 
-    // console.log("========== BEFORE ==========");
-    // console.log({
-    //   product: before?.title,
-    //   availableStock: before?.availableStock,
-    //   totalSold: before?.totalSold,
-    // });
+        // console.log("========== BEFORE ==========");
+        // console.log({
+        //   product: before?.title,
+        //   availableStock: before?.availableStock,
+        //   totalSold: before?.totalSold,
+        // });
 
-    await Product.findByIdAndUpdate(
-      item.product,
-      {
-        $inc: {
-          availableStock: item.quantity,
-          totalSold: -item.quantity,
-        },
-      },
-      {
-        session,
-        returnDocument: "after",
-      },
-    );
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              availableStock: item.quantity,
+              totalSold: -item.quantity,
+            },
+          },
+          {
+            session,
+            returnDocument: "after",
+          },
+        );
 
-    // console.log("========== AFTER ==========");
-    // console.log({
-    //   product: updated?.title,
-    //   availableStock: updated?.availableStock,
-    //   totalSold: updated?.totalSold,
-    // });
-  }
+        // console.log("========== AFTER ==========");
+        // console.log({
+        //   product: updated?.title,
+        //   availableStock: updated?.availableStock,
+        //   totalSold: updated?.totalSold,
+        // });
+      }
 
-  existingOrder.isRestocked = true;
-}
+      existingOrder.isRestocked = true;
+    }
 
     existingOrder.orderStatus = OrderStatus.NO_RESPONSE;
     existingOrder.deliveryStatus = DeliveryStatus.NOT_SHIPPED;

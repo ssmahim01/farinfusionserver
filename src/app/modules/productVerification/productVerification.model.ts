@@ -79,6 +79,13 @@ const ProductVerificationSchema = new Schema<IProductVerification>(
       default: 0,
     },
 
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
+      index: true,
+    },
+
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
