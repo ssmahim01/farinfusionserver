@@ -229,16 +229,16 @@ const createOrder = async (payload: TCreateOrderPayload) => {
       orderDoc.total = orderDoc.total;
     }
 
-   // Link customer only if a valid email exists
-if (payload?.billingDetails?.email) {
-  const isUserExist = await User.findOne({
-    email: payload.billingDetails.email,
-  }).session(session);
+    // Link customer only if a valid email exists
+    if (payload?.billingDetails?.email) {
+      const isUserExist = await User.findOne({
+        email: payload.billingDetails.email,
+      }).session(session);
 
-  if (isUserExist) {
-    orderDoc.customer = isUserExist._id;
-  }
-}
+      if (isUserExist) {
+        orderDoc.customer = isUserExist._id;
+      }
+    }
 
     if (payload.billingDetails) {
       orderDoc.billingDetails = payload.billingDetails;
@@ -1200,13 +1200,7 @@ const getAllScheduledOrders = async (query: Record<string, string>) => {
 
   const queryBuilder = new QueryBuilder(Order.find(queryObj), query);
 
-  const data = await queryBuilder
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .build()
+  const data = await Order.find(queryObj)
     .populate("customer", "name email phone")
     .populate("seller", "name email role")
     .populate("products.product");

@@ -134,7 +134,7 @@ const getDashboardOverview = async (
     CANCELLED: 0,
     PARTIAL: 0,
     COURIER_ASSIGNED: courierAssignedCount || 0,
-    NO_RESPONSE: 0
+    NO_RESPONSE: 0,
   };
 
   orderStatsAgg.forEach((item) => {
@@ -375,13 +375,14 @@ const getDashboardOverview = async (
     },
   ]);
 
+  const confirmedMatch = {
+    ...matchCondition,
+    orderStatus: "CONFIRMED",
+  };
+
   confirmedProducts = await Order.aggregate([
     {
-      $match: {
-        orderStatus: "CONFIRMED",
-        isDeleted: false,
-        ...queryObj,
-      },
+      $match: confirmedMatch,
     },
     { $unwind: "$products" },
     {
