@@ -1267,13 +1267,7 @@ const getMyScheduledOrders = async (
 
   const queryBuilder = new QueryBuilder(Order.find(baseQuery), query);
 
-  const data = await queryBuilder
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .build()
+ const data = await Order.find(baseQuery)
     .populate("customer", "name email phone")
     .populate("seller", "name email role")
     .populate("products.product");
@@ -1435,13 +1429,7 @@ const getAllHoldOrders = async (query: Record<string, string>) => {
 
   const queryBuilder = new QueryBuilder(Order.find(queryObj), query);
 
-  const data = await queryBuilder
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .build()
+const data = await Order.find(queryObj)
     .populate("customer", "name email phone")
     .populate("seller", "name email role")
     .populate("products.product");
@@ -1508,13 +1496,7 @@ const getMyHoldOrders = async (
 
   const queryBuilder = new QueryBuilder(Order.find(baseQuery), query);
 
-  const data = await queryBuilder
-    .search(orderSearchableFields)
-    .filter()
-    .sort()
-    .fields()
-    .paginate()
-    .build()
+ const data = await Order.find(baseQuery)
     .populate("customer", "name email phone")
     .populate("seller", "name email role")
     .populate("products.product");
