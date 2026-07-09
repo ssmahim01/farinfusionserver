@@ -106,7 +106,7 @@ const getDashboardOverview = async (
     matchCondition["billingDetails.email"] = user.email;
   }
 
-  if ([Role.MODERATOR, Role.MANAGER].includes(role as Role)) {
+  if ([Role.MODERATOR].includes(role as Role)) {
     matchCondition.seller = new Types.ObjectId(userId);
   }
 
