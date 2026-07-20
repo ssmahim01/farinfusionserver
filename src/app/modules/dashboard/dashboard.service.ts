@@ -209,7 +209,6 @@ const getDashboardOverview = async (
   const totalCost = totalProductCost;
 
   const netProfit = totalRevenue - totalCost;
-  // console.log(staffSalaryForPeriod, totalProductCost, totalRevenue);
 
   const recentOrders = await Order.find(matchCondition)
     .sort({ createdAt: -1 })
