@@ -126,17 +126,35 @@ const getDashboardOverview = async (
     ...matchCondition,
     deliveryStatus: "COURIERASSIGNED",
   });
+const inTransitCount = await Order.countDocuments({
+  ...matchCondition,
+  deliveryStatus: "IN_TRANSIT",
+});
 
-  const orderStats = {
-    PENDING: 0,
-    CONFIRMED: 0,
-    COMPLETED: 0,
-    CANCELLED: 0,
-    PARTIAL: 0,
-    COURIER_ASSIGNED: courierAssignedCount || 0,
-    NO_RESPONSE: 0,
-  };
+const noResponseCount = await Order.countDocuments({
+  ...matchCondition,
+  deliveryStatus: "NO_RESPONSE",
+});
+  // const orderStats = {
+  //   PENDING: 0,
+  //   CONFIRMED: 0,
+  //   COMPLETED: 0,
+  //   CANCELLED: 0,
+  //   PARTIAL: 0,
+  //   COURIER_ASSIGNED: courierAssignedCount || 0,
+  //   NO_RESPONSE: 0,
+  // };
+const orderStats = {
+  PENDING: 0,
+  CONFIRMED: 0,
+  COMPLETED: 0,
+  CANCELLED: 0,
+  PARTIAL: 0,
 
+  COURIER_ASSIGNED: courierAssignedCount,
+  IN_TRANSIT: inTransitCount,
+  NO_RESPONSE: noResponseCount,
+};
   orderStatsAgg.forEach((item) => {
     orderStats[item._id as keyof typeof orderStats] = item.count;
   });
@@ -209,6 +227,7 @@ const getDashboardOverview = async (
   const totalCost = totalProductCost;
 
   const netProfit = totalRevenue - totalCost;
+  // console.log(staffSalaryForPeriod, totalProductCost, totalRevenue);
 
   const recentOrders = await Order.find(matchCondition)
     .sort({ createdAt: -1 })
