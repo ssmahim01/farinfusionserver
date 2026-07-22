@@ -71,7 +71,7 @@ const createProductService = async (
   payload.totalSold = 0;
   payload.isFeatured = false;
 
-  if (user.role === "MANAGER") {
+  if (user.role !== "ADMIN") {
     delete payload.buyingPrice;
   }
 
@@ -129,7 +129,6 @@ const updateProduct = async (
     const stockChange = Number(payload.totalAddedStock);
 
     const newTotalAddedStock = (product.totalAddedStock || 0) + stockChange;
-
     const newAvailableStock = (product.availableStock || 0) + stockChange;
 
     if (newTotalAddedStock < 0 || newAvailableStock < 0) {
@@ -138,6 +137,9 @@ const updateProduct = async (
 
     product.totalAddedStock = newTotalAddedStock;
     product.availableStock = newAvailableStock;
+
+    product.lastStockUpdatedBy = new mongoose.Types.ObjectId(user.userId);
+    product.lastStockUpdatedAt = new Date();
 
     delete payload.totalAddedStock;
   }
@@ -156,7 +158,7 @@ const updateProduct = async (
 
   const updatableFields = { ...payload };
 
-  if (user.role === "MANAGER") {
+  if (user.role !== "ADMIN") {
     delete payload.buyingPrice;
   }
   Object.assign(product, updatableFields);
@@ -168,7 +170,11 @@ const updateProduct = async (
 const getSingleProduct = async (slug: string) => {
   const product = await Product.findOne({ slug })
     .populate("category", "title slug")
-    .populate("brand", "title slug");
+    .populate("brand", "title slug")
+    .populate(
+      "lastStockUpdatedBy",
+      "name fullName firstName lastName email phone role profileImage",
+    );
 
   if (!product) {
     throw new AppError(httpStatus.NOT_FOUND, "Product Not Found");
@@ -410,7 +416,13 @@ const getAllProducts = async (query: Record<string, string>) => {
   }
 
   const queryBuilder = new QueryBuilder(
-    Product.find(productQuery).populate("category").populate("brand"),
+    Product.find(productQuery)
+      .populate("category")
+      .populate("brand")
+      .populate(
+        "lastStockUpdatedBy",
+        "name fullName firstName lastName email phone role profileImage",
+      ),
     query,
   );
 

@@ -86,6 +86,16 @@ const productSchema = new Schema<IProduct>(
       sparse: true,
       trim: true,
     },
+    lastStockUpdatedBy: {
+      type: Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    lastStockUpdatedAt: {
+      type: Date,
+      default: null,
+    },
     totalSold: {
       type: Number,
       default: 0,

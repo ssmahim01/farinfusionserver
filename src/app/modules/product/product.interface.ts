@@ -10,6 +10,8 @@ export interface IProduct {
   isCusFavorite?: boolean;
   totalReturned: number;
   barcode?: string;
+  lastStockUpdatedBy?: Types.ObjectId;
+lastStockUpdatedAt?: Date;
   restockCount: number;
   isBestSelling?: boolean;
   // Basic Info

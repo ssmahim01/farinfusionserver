@@ -13,7 +13,7 @@ const router = express.Router();
 
 router.post(
   "/create-product",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   multerUpload.none(),
   // validateRequest(createProductZodSchema),
   ProductControllers.createProduct,
@@ -21,7 +21,7 @@ router.post(
 
 router.post(
   "/assign-missing-barcodes",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+  checkAuth(...Object.values(Role)),
   ProductControllers.assignMissingBarcodes,
 );
 
@@ -35,13 +35,13 @@ router.delete(
 );
 router.patch(
   "/:id/toggle-featured",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+   checkAuth(...Object.values(Role)),
   ProductControllers.toggleFeatured,
 );
 
 router.patch(
   "/:id",
-  checkAuth(Role.ADMIN, Role.MANAGER),
+ checkAuth(...Object.values(Role)),
   multerUpload.none(),
   // validateRequest(updateProductZodSchema),
   ProductControllers.updateProduct,
